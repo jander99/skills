@@ -47,7 +47,7 @@ metadata:
 ## What I Do
 
 - Create new skills from scratch with templates
-- Validate skills against 34-check system (9 errors, 17 warnings, 8 suggestions)
+- Validate skills against 33-check system (8 errors, 17 warnings, 8 suggestions)
 - Grade skills using 100-point rubric (A/B/C/D/F scale)
 - Optimize descriptions for auto-activation (5+ verbs, 10+ keywords)
 - Generate slash commands with proper naming (ak- prefix for agent-kit)
@@ -85,8 +85,8 @@ Run: `./scripts/validate-skill.sh path/to/skill`
 
 ## Validation Overview
 
-**34 checks across 3 tiers:**
-- 🔴 **Errors (9):** Must fix to publish
+**33 checks across 3 tiers:**
+- 🔴 **Errors (8):** Must fix to publish
 - 🟡 **Warnings (17):** Should fix for effectiveness  
 - 🟢 **Suggestions (8):** Polish & best practices
 

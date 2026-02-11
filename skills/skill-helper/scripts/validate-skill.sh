@@ -117,7 +117,7 @@ parse_frontmatter() {
     LINE_COUNT=$(wc -l < "$SKILL_MD")
 }
 
-# === ERROR CHECKS (9) ===
+# === ERROR CHECKS (8) ===
 
 check_name_exists() {
     if [ -z "$SKILL_NAME" ]; then
@@ -209,16 +209,8 @@ check_skill_md_exists() {
     return 0
 }
 
-check_context7_format() {
-    if grep -q "context7" "$SKILL_MD" 2>/dev/null; then
-        if ! grep -qE "context7_(resolve-library-id|query-docs)\(.*\)" "$SKILL_MD"; then
-            ERROR_MESSAGES+=("Invalid Context7 format (should be: context7_resolve-library-id(...) or context7_query-docs(...))")
-            ((ERRORS++))
-            return 1
-        fi
-    fi
-    return 0
-}
+# check_context7_format() - REMOVED
+# Context7 format validation removed - documentation style varies
 
 check_no_placeholders() {
     local placeholders=$(grep -iE "(TODO:|FIXME:|XXX:|TBD:|\[PLACEHOLDER\])" "$SKILL_MD" | head -5)
@@ -762,7 +754,7 @@ main() {
     # Parse frontmatter
     parse_frontmatter
     
-    # Run error checks (9)
+    # Run error checks (8)
     # Note: || true prevents set -e from exiting on return 1
     check_name_exists || true
     check_name_format || true
@@ -771,7 +763,7 @@ main() {
     check_description_length || true
     check_no_xml_in_frontmatter || true
     check_skill_md_exists || true
-    check_context7_format || true
+    # check_context7_format || true  # REMOVED
     check_no_placeholders || true
     
     # Run warning checks (17)
