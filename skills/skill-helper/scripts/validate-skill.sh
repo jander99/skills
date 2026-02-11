@@ -22,12 +22,12 @@ declare -a ERROR_MESSAGES
 declare -a WARNING_MESSAGES
 declare -a SUGGESTION_MESSAGES
 
-# Grade component scores
-DESC_QUALITY_SCORE=0
-STRUCTURE_SCORE=0
-CONTENT_SCORE=0
-TECH_IMPL_SCORE=0
-SPEC_COMPLIANCE_SCORE=0
+# Grade component scores (initialize at max, subtract for failures)
+DESC_QUALITY_SCORE=35
+STRUCTURE_SCORE=25
+CONTENT_SCORE=20
+TECH_IMPL_SCORE=15
+SPEC_COMPLIANCE_SCORE=5
 
 # Skill metadata
 SKILL_PATH=""
@@ -84,12 +84,16 @@ parse_frontmatter() {
     # Extract frontmatter between --- markers
     local in_frontmatter=0
     local frontmatter=""
+    local line_num=0
+    local frontmatter_end=0
     
     while IFS= read -r line; do
+        line_num=$((line_num + 1))
         if [[ "$line" == "---" ]]; then
             if [[ $in_frontmatter -eq 0 ]]; then
                 in_frontmatter=1
             else
+                frontmatter_end=$line_num
                 break
             fi
         elif [[ $in_frontmatter -eq 1 ]]; then
@@ -98,22 +102,26 @@ parse_frontmatter() {
     done < "$SKILL_MD"
 
     # Parse name
-    SKILL_NAME=$(echo "$frontmatter" | grep -E "^name:" | sed 's/name:[[:space:]]*//')
+    SKILL_NAME=$(echo "$frontmatter" | grep -E "^name:" | sed 's/name:[[:space:]]*//' || true)
     
     # Parse description (may span multiple lines)
     # Only stop on known frontmatter keys to avoid early termination
     SKILL_DESC=$(echo "$frontmatter" | awk '/^description:/{flag=1; sub(/^description:[[:space:]]*/, ""); print; next} flag{if(/^(name|version|license|author|tags|commands):/){exit} print}' | tr '\n' ' ' | sed 's/  */ /g')
     
     # Check for license
-    HAS_LICENSE=$(echo "$frontmatter" | grep -E "^license:" | wc -l)
+    HAS_LICENSE=$(echo "$frontmatter" | grep -cE "^license:" || true)
     
     # Check for version in metadata
-    HAS_VERSION=$(echo "$frontmatter" | grep -E "version:" | wc -l)
+    HAS_VERSION=$(echo "$frontmatter" | grep -cE "^version:" || true)
     
     # Count tokens (rough estimate: 4 chars = 1 token)
-    local body_text=$(tail -n +$(grep -n "^---$" "$SKILL_MD" | tail -1 | cut -d: -f1) "$SKILL_MD")
-    local char_count=$(echo "$body_text" | wc -c)
-    TOKEN_COUNT=$((char_count / 4))
+    if [ $frontmatter_end -gt 0 ]; then
+        local body_text=$(tail -n +$((frontmatter_end + 1)) "$SKILL_MD")
+        local char_count=$(echo "$body_text" | wc -c)
+        TOKEN_COUNT=$((char_count / 4))
+    else
+        TOKEN_COUNT=0
+    fi
     LINE_COUNT=$(wc -l < "$SKILL_MD")
 }
 
@@ -123,9 +131,9 @@ check_name_exists() {
     if [ -z "$SKILL_NAME" ]; then
         ERROR_MESSAGES+=("Name field missing in frontmatter")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
-    SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE + 1))
     return 0
 }
 
@@ -133,16 +141,17 @@ check_name_format() {
     if ! [[ "$SKILL_NAME" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
         ERROR_MESSAGES+=("Invalid name format: '$SKILL_NAME' (must be lowercase, hyphens only, ^[a-z0-9-]+\$)")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
     
     if [ ${#SKILL_NAME} -gt 64 ]; then
         ERROR_MESSAGES+=("Name too long: ${#SKILL_NAME} chars (max 64)")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
     
-    SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE + 1))
     return 0
 }
 
@@ -159,9 +168,9 @@ check_description_exists() {
     if [ -z "$SKILL_DESC" ]; then
         ERROR_MESSAGES+=("Description field missing in frontmatter")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
-    SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE + 1))
     return 0
 }
 
@@ -170,16 +179,17 @@ check_description_length() {
     if [ $desc_len -lt 50 ]; then
         ERROR_MESSAGES+=("Description too short: $desc_len chars (min 50)")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
     
     if [ $desc_len -gt 1024 ]; then
         ERROR_MESSAGES+=("Description too long: $desc_len chars (max 1024)")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
     
-    SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE + 1))
     return 0
 }
 
@@ -203,9 +213,9 @@ check_skill_md_exists() {
     if [ ! -f "$SKILL_MD" ]; then
         ERROR_MESSAGES+=("SKILL.md file does not exist")
         ((ERRORS++))
+        SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE - 1))
         return 1
     fi
-    SPEC_COMPLIANCE_SCORE=$((SPEC_COMPLIANCE_SCORE + 1))
     return 0
 }
 
@@ -213,7 +223,7 @@ check_skill_md_exists() {
 # Context7 format validation removed - documentation style varies
 
 check_no_placeholders() {
-    local placeholders=$(grep -iE "(TODO:|FIXME:|XXX:|TBD:|\[PLACEHOLDER\])" "$SKILL_MD" | head -5)
+    local placeholders=$(grep -iE "(TODO:|FIXME:|XXX:|TBD:|\[PLACEHOLDER\])" "$SKILL_MD" | head -5 || true)
     if [ -n "$placeholders" ]; then
         ERROR_MESSAGES+=("Placeholder content found (TODO, FIXME, XXX, TBD, [PLACEHOLDER])")
         ((ERRORS++))
@@ -231,38 +241,35 @@ check_description_has_when() {
         DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 3))
         return 1
     fi
-    DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE + 3))
     return 0
 }
 
 check_description_action_verbs() {
     local verbs="Create|Write|Generate|Edit|Update|Build|Validate|Audit|Review|Optimize|Refactor|Debug|Fix|Deploy|Install|Configure|Implement|Design|Test|Analyze|Process|Handle|Manage|Monitor"
-    local verb_count=$(grep -oiE "$verbs" <<< "$SKILL_DESC" | wc -l)
+    local verb_count=$(grep -oiE "$verbs" <<< "$SKILL_DESC" | wc -l || true)
     
     if [ $verb_count -lt 5 ]; then
         WARNING_MESSAGES+=("Description has only $verb_count action verbs (recommend 5+)")
         ((WARNINGS++))
-        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 2))
+        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 5))
         return 1
     fi
-    DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE + 5))
     return 0
 }
 
 check_keyword_density() {
     # Count technology keywords (rough heuristic: capitalized words, tech terms)
     # Deduplicate matches to avoid double-counting
-    local keywords=$(grep -oE "[A-Z][a-zA-Z0-9]+" <<< "$SKILL_DESC" | tr '[:upper:]' '[:lower:]' | sort -u | wc -l)
-    local tech_terms=$(grep -oiE "(test|api|database|server|client|http|json|yaml|xml|typescript|javascript|python|java|react|angular|docker|kubernetes)" <<< "$SKILL_DESC" | tr '[:upper:]' '[:lower:]' | sort -u | wc -l)
+    local keywords=$(grep -oE "[A-Z][a-zA-Z0-9]+" <<< "$SKILL_DESC" | tr '[:upper:]' '[:lower:]' | sort -u | wc -l || true)
+    local tech_terms=$(grep -oiE "(test|api|database|server|client|http|json|yaml|xml|typescript|javascript|python|java|react|angular|docker|kubernetes)" <<< "$SKILL_DESC" | tr '[:upper:]' '[:lower:]' | sort -u | wc -l || true)
     local total_keywords=$((keywords + tech_terms))
     
     if [ $total_keywords -lt 10 ]; then
         WARNING_MESSAGES+=("Low keyword density: ~$total_keywords keywords (recommend 10+)")
         ((WARNINGS++))
-        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 2))
+        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 3))
         return 1
     fi
-    DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE + 3))
     return 0
 }
 
@@ -270,10 +277,9 @@ check_has_examples() {
     if ! grep -qiE "^##+ Examples?|^###+ Example" "$SKILL_MD"; then
         WARNING_MESSAGES+=("No examples section found")
         ((WARNINGS++))
-        CONTENT_SCORE=$((CONTENT_SCORE - 2))
+        CONTENT_SCORE=$((CONTENT_SCORE - 3))
         return 1
     fi
-    CONTENT_SCORE=$((CONTENT_SCORE + 3))
     return 0
 }
 
@@ -289,18 +295,16 @@ check_token_limit() {
         STRUCTURE_SCORE=$((STRUCTURE_SCORE - 2))
         return 1
     elif [ $TOKEN_COUNT -ge 1000 ] && [ $TOKEN_COUNT -le 2000 ]; then
-        # Sweet spot!
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE + 5))
         return 0
     elif [ $TOKEN_COUNT -gt 2000 ] && [ $TOKEN_COUNT -le 3500 ]; then
         WARNING_MESSAGES+=("SKILL.md large: ~$TOKEN_COUNT tokens (recommend 1000-2000, consider refactoring)")
         ((WARNINGS++))
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 1))
+        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 2))
         return 1
     elif [ $TOKEN_COUNT -gt 3500 ]; then
         WARNING_MESSAGES+=("SKILL.md too large: ~$TOKEN_COUNT tokens (recommend 1000-2000, strongly consider refactoring)")
         ((WARNINGS++))
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 3))
+        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 4))
         return 1
     fi
     return 0
@@ -310,12 +314,32 @@ check_referenced_files() {
     local broken_links=0
     while IFS= read -r link; do
         local file_path=$(echo "$link" | sed -n 's/.*(\([^)]*\)).*/\1/p')
-        # Skip external links
-        if [[ "$file_path" =~ ^https?:// ]]; then
+        
+        # Skip external links (http, https, mailto, etc.)
+        if [[ "$file_path" =~ ^[a-z]+:// ]] || [[ "$file_path" =~ ^mailto: ]]; then
             continue
         fi
         
-        local full_path="$SKILL_DIR/$file_path"
+        # Skip anchor-only links
+        if [[ "$file_path" =~ ^# ]]; then
+            continue
+        fi
+        
+        # Strip fragment/query from file path
+        local clean_path="${file_path%%#*}"
+        clean_path="${clean_path%%\?*}"
+        
+        # Reject absolute paths and path traversal
+        if [[ "$clean_path" =~ ^/ ]] || [[ "$clean_path" =~ \.\. ]]; then
+            if [ $broken_links -eq 0 ]; then
+                WARNING_MESSAGES+=("Invalid file references found:")
+            fi
+            WARNING_MESSAGES+=("  - $file_path (absolute paths or '..' not allowed)")
+            ((broken_links++))
+            continue
+        fi
+        
+        local full_path="$SKILL_DIR/$clean_path"
         if [ ! -f "$full_path" ]; then
             if [ $broken_links -eq 0 ]; then
                 WARNING_MESSAGES+=("Broken links found:")
@@ -323,7 +347,7 @@ check_referenced_files() {
             WARNING_MESSAGES+=("  - $file_path")
             ((broken_links++))
         fi
-    done < <(grep -oE "\[([^\]]+)\]\(([^)]+)\)" "$SKILL_MD")
+    done < <(grep -oE "\[([^\]]+)\]\(([^)]+)\)" "$SKILL_MD" || true)
     
     if [ $broken_links -gt 0 ]; then
         ((WARNINGS++))
@@ -336,10 +360,9 @@ check_has_purpose() {
     if ! grep -qiE "^##+ (What I Do|Purpose|Overview)" "$SKILL_MD"; then
         WARNING_MESSAGES+=("No 'What I Do' or purpose section found")
         ((WARNINGS++))
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 1))
+        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 2))
         return 1
     fi
-    STRUCTURE_SCORE=$((STRUCTURE_SCORE + 2))
     return 0
 }
 
@@ -361,13 +384,10 @@ check_slash_command() {
     if [ -n "$cmd_path" ] && [ ! -f "$cmd_path" ]; then
         WARNING_MESSAGES+=("No slash command found at $cmd_path")
         ((WARNINGS++))
-        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 1))
+        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 2))
         return 1
     fi
     
-    if [ -f "$cmd_path" ]; then
-        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE + 2))
-    fi
     return 0
 }
 
@@ -391,7 +411,6 @@ check_command_references_skill() {
             TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 1))
             return 1
         fi
-        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE + 1))
     fi
     return 0
 }
@@ -419,11 +438,11 @@ check_no_name_conflicts() {
 }
 
 check_quick_start() {
-    local quick_start_line=$(grep -n -iE "^##+ Quick Start" "$SKILL_MD" | head -1 | cut -d: -f1)
+    local quick_start_line=$(grep -n -iE "^##+ Quick Start" "$SKILL_MD" | head -1 | cut -d: -f1 || true)
     if [ -z "$quick_start_line" ]; then
         WARNING_MESSAGES+=("No Quick Start section found")
         ((WARNINGS++))
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 1))
+        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 2))
         return 1
     fi
     
@@ -434,7 +453,6 @@ check_quick_start() {
         return 1
     fi
     
-    STRUCTURE_SCORE=$((STRUCTURE_SCORE + 2))
     return 0
 }
 
@@ -442,10 +460,9 @@ check_tool_expectations() {
     if ! grep -qiE "Tools? (Used|Required|Needed):" "$SKILL_MD"; then
         WARNING_MESSAGES+=("Tool expectations not documented")
         ((WARNINGS++))
-        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 1))
+        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 2))
         return 1
     fi
-    TECH_IMPL_SCORE=$((TECH_IMPL_SCORE + 2))
     return 0
 }
 
@@ -453,10 +470,9 @@ check_parenthetical_grouping() {
     if ! grep -qE "\([^)]+,\s*[^)]+\)" <<< "$SKILL_DESC"; then
         WARNING_MESSAGES+=("Description lacks parenthetical grouping (e.g., 'frameworks (React, Angular, Vue)')")
         ((WARNINGS++))
-        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 1))
+        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 2))
         return 1
     fi
-    DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE + 2))
     return 0
 }
 
@@ -468,7 +484,6 @@ check_reference_navigation() {
             STRUCTURE_SCORE=$((STRUCTURE_SCORE - 1))
             return 1
         fi
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE + 1))
     fi
     return 0
 }
@@ -479,10 +494,9 @@ check_error_handling() {
         if ! grep -qiE "^##+ (Common )?Errors?" "$SKILL_MD"; then
             WARNING_MESSAGES+=("Complex skill should document common errors")
             ((WARNINGS++))
-            CONTENT_SCORE=$((CONTENT_SCORE - 1))
+            CONTENT_SCORE=$((CONTENT_SCORE - 2))
             return 1
         fi
-        CONTENT_SCORE=$((CONTENT_SCORE + 2))
     fi
     return 0
 }
@@ -491,10 +505,9 @@ check_prerequisites() {
     if ! grep -qiE "Prerequisites?:" "$SKILL_MD"; then
         WARNING_MESSAGES+=("Prerequisites not documented")
         ((WARNINGS++))
-        CONTENT_SCORE=$((CONTENT_SCORE - 1))
+        CONTENT_SCORE=$((CONTENT_SCORE - 2))
         return 1
     fi
-    CONTENT_SCORE=$((CONTENT_SCORE + 2))
     return 0
 }
 
@@ -506,7 +519,6 @@ check_has_related_skills() {
         ((SUGGESTIONS++))
         return 1
     fi
-    TECH_IMPL_SCORE=$((TECH_IMPL_SCORE + 1))
     return 0
 }
 
@@ -550,10 +562,8 @@ check_decision_matrix() {
     if ! grep -qE "\|.*\|.*\|.*\|" "$SKILL_MD" || ! grep -qiE "(Quick Reference|Decision)" "$SKILL_MD"; then
         SUGGESTION_MESSAGES+=("Consider adding decision matrix or quick reference table")
         ((SUGGESTIONS++))
-        STRUCTURE_SCORE=$((STRUCTURE_SCORE - 1))
         return 1
     fi
-    STRUCTURE_SCORE=$((STRUCTURE_SCORE + 1))
     return 0
 }
 
@@ -561,10 +571,8 @@ check_cross_skill_integration() {
     if ! grep -qE "\`[a-z0-9-]+\`" "$SKILL_MD"; then
         SUGGESTION_MESSAGES+=("Consider referencing related skills")
         ((SUGGESTIONS++))
-        TECH_IMPL_SCORE=$((TECH_IMPL_SCORE - 1))
         return 1
     fi
-    TECH_IMPL_SCORE=$((TECH_IMPL_SCORE + 1))
     return 0
 }
 
@@ -574,10 +582,8 @@ check_concrete_examples() {
         if grep -qE "\[(placeholder|example|args?|options?|flags?)\]" "$SKILL_MD"; then
             SUGGESTION_MESSAGES+=("Examples contain placeholders - make them copy-paste ready")
             ((SUGGESTIONS++))
-            CONTENT_SCORE=$((CONTENT_SCORE - 1))
             return 1
         fi
-        CONTENT_SCORE=$((CONTENT_SCORE + 2))
     fi
     return 0
 }
@@ -587,10 +593,8 @@ check_task_centric_framing() {
     if grep -qiE "(this (tool|skill) (uses|wraps|utilizes)|uses? the .* (API|library|tool))" <<< "$SKILL_DESC"; then
         SUGGESTION_MESSAGES+=("Description appears tool-centric - consider task-centric framing")
         ((SUGGESTIONS++))
-        DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE - 2))
         return 1
     fi
-    DESC_QUALITY_SCORE=$((DESC_QUALITY_SCORE + 2))
     return 0
 }
 
