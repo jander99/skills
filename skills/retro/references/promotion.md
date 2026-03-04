@@ -11,6 +11,7 @@ Examples of promotable patterns:
 - 3 entries all have Anchor mentioning "forgot to check current branch" → promotable
 - 4 entries have Wind mentioning "reading file before writing prevented data loss" → promotable
 - 2 entries mention the same thing → NOT yet promotable (wait for a third)
+- **Same-session duplicates do not count**: Multiple entries written in the same session about the same issue count as 1 occurrence. Occurrences must span at least 2 distinct retro sessions.
 
 ## What NOT to Promote
 
@@ -56,6 +57,13 @@ Find or create a `## Learned Rules` section. Group rules by tag category:
 ### Appending Rules
 
 When adding a new promoted rule:
+
+**Step 0 — Dedup check (do this first):**
+Take the most distinctive 5–10 word phrase from your new rule.
+`grep` (case-insensitive) for that phrase in the target file (AGENTS.md or CLAUDE.md).
+- If a ≥80% semantic match is found: **skip the append**. Instead, add a note to the current LESSONS.md entry: `<!-- Rule already promoted on YYYY-MM-DD — skipped dedup -->`
+- If no match: proceed to step 1 below.
+
 1. Locate the existing `## Learned Rules` section
 2. Find the matching tag subsection (or create it)
 3. Append the new bullet — do NOT remove existing bullets

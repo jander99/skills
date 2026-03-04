@@ -1,9 +1,9 @@
 ---
 name: retro
-description: Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files. Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem.
+description: Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files. Auto-trigger setup: install OpenCode plugin hooks, Claude Code Stop hooks, and Cline TaskComplete hooks so retros fire automatically when all todos complete. Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem, or when setting up automatic retro triggers.
 license: MIT
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   author: jeff
   audience: developers, agents
   workflow: retrospective, self-improvement, lessons-learned
@@ -35,6 +35,7 @@ metadata:
 - Compact `LESSONS.md` when it exceeds 20 entries (rolling synthesis)
 - Promote recurring patterns (3+ occurrences) to durable rules in `AGENTS.md` / `CLAUDE.md`
 - Feed forward: generate one concrete "next session" action item per retro
+- **Auto-trigger setup**: provide hook scripts and AGENTS.md snippets that fire the retro automatically when all tasks complete (OpenCode plugin hook, Claude Code Stop hook, Cline TaskComplete hook, universal prompt fallback)
 
 ## When to Use Me
 
@@ -45,6 +46,7 @@ Use this skill when you:
 - Want to identify and promote recurring patterns to permanent rules
 - Need to compact a growing `LESSONS.md` into concise synthesized insights
 - Are setting up a self-improvement loop for an AI agent
+- Want to **auto-trigger** retros: install hooks so the retro fires automatically when all tasks complete
 
 ---
 
@@ -82,6 +84,14 @@ ELSE (Claude Code, Cursor, Gemini CLI, etc.):
 
 ### Step 2: Self-Assessment Questions
 
+> **Reflection Lens** — assess each axis before writing your entry:
+>
+> | Axis | What to examine |
+> |------|----------------|
+> | **Human ↔ LLM** | Communication clarity, assumptions stated, questions asked vs. needed |
+> | **LLM ↔ Tool** | Unnecessary tool calls, missed tool opportunities, wrong tools chosen |
+> | **LLM ↔ Project** | Convention alignment, scope discipline, codebase pattern adherence |
+
 Work through these questions against the transcript or context:
 
 **Planning**
@@ -105,9 +115,17 @@ Work through these questions against the transcript or context:
 - Did I leave the workspace clean (no temp files, no stale branches)?
 - Did I commit on the right branch?
 
-### Step 3: Write the LESSONS.md Entry
+### Step 3: Ask Human Questions
 
-Append to `LESSONS.md` in the project root (create if absent):
+Pose **up to 3 targeted questions** to the human based on your self-assessment:
+- **1 fixed**: "Is there anything I missed or got wrong about the overall task?"
+- **Up to 2 dynamic**: drawn from gaps observed across the three axes above (e.g., if you noticed you called a tool multiple times unnecessarily, ask "Did you feel I was using [tool] too aggressively?")
+
+Wait for human responses before writing the LESSONS.md entry. If no human responds within the session, note "No human feedback received" in the Rocks section.
+
+### Step 4: Write the LESSONS.md Entry
+
+Append to `LESSONS.md` in the project root. If creating from scratch, use the **New File Template** in the [LESSONS.md Format](#lessonsmd-format) section below — it includes the required `<!-- retro:entries:0 -->` counter that compaction depends on.
 
 ```markdown
 ## YYYY-MM-DD HH:MM | <tag1> [<tag2>]
@@ -127,7 +145,7 @@ Append to `LESSONS.md` in the project root (create if absent):
 - If nothing went wrong: "Anchor: None notable" is valid (don't fabricate)
 - If nothing was accomplished: still write the entry — document the reason
 
-### Step 4: Archive (Optional)
+### Step 5: Archive (Optional)
 
 If `.retro/` directory exists in the project (or user asks to archive):
 
@@ -138,9 +156,9 @@ mkdir -p .retro
 
 The archive file can include more verbose notes, tool call counts, correction loop analysis.
 
-### Step 5: Compaction Check
+### Step 6: Compaction Check
 
-After writing, count entries in `LESSONS.md`.
+After writing, count entries in `LESSONS.md`. Read the `<!-- retro:entries:N -->` comment for the count; if the comment is absent, count the number of `## YYYY-` date headings as a fallback.
 
 **If entries > 20:** Run compaction (see [references/compaction.md](references/compaction.md))
 
@@ -256,6 +274,15 @@ Agent: [session_read available] → reads all 47 messages → finds 2 branch-che
 | [references/compaction.md](references/compaction.md) | LESSONS.md has >20 entries; need synthesis |
 | [references/promotion.md](references/promotion.md) | Promoting patterns to AGENTS.md / CLAUDE.md |
 | [references/session-read.md](references/session-read.md) | Using `session_read` in OpenCode for full transcript |
+| [references/auto-trigger.md](references/auto-trigger.md) | Setting up automatic retro triggers (hooks + AGENTS.md) |
+
+### Auto-Trigger Scripts
+
+| Script | Tool | Description |
+|--------|------|-------------|
+| [scripts/opencode-plugin-hook.ts](scripts/opencode-plugin-hook.ts) | OpenCode | Plugin hook — fires when all todos complete |
+| [scripts/claude-code-stop-hook.sh](scripts/claude-code-stop-hook.sh) | Claude Code | Stop hook — checks sentinel, re-prompts retro |
+| [scripts/cline-task-complete-hook.sh](scripts/cline-task-complete-hook.sh) | Cline | TaskComplete hook — injects retro prompt |
 
 ## Related Skills
 

@@ -2,7 +2,7 @@
 description: Run a structured retrospective on the current session — assess what worked, what didn't, write persistent lessons to LESSONS.md, and promote recurring patterns to AGENTS.md.
 arguments:
   - name: mode
-    description: "compact (synthesize LESSONS.md entries), promote (force pattern promotion check), or omit for a standard retro"
+    description: "compact (synthesize LESSONS.md entries), promote (force pattern promotion check), setup (show auto-trigger installation guide for OpenCode/Claude Code/Cline/Cursor), or omit for a standard retro"
     required: false
 ---
 
@@ -24,6 +24,7 @@ Follow the retro skill instructions in @skills/retro/SKILL.md exactly.
 - **No argument** — Standard retro: assess session, write one entry, check for promotable patterns
 - **`compact`** — Skip session assessment; go straight to synthesizing all LESSONS.md entries into patterns
 - **`promote`** — Skip session assessment; scan existing entries and force a promotion check only
+- **`setup`** — Show the auto-trigger installation guide: read `skills/retro/references/auto-trigger.md` and present the hook scripts + AGENTS.md snippet relevant to the user's tool
 
 ## Additional Context
 

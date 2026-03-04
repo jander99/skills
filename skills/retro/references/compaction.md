@@ -9,6 +9,18 @@ Triggered when `LESSONS.md` has more than 20 entries (`<!-- retro:entries:N -->`
 
 ## Algorithm
 
+### Phase 0: Archive Before Compacting
+
+**Always back up before any destructive operation.**
+
+1. Check/create `.retro/` directory: `mkdir -p .retro`
+2. Copy current LESSONS.md to timestamped backup:
+   - Filename: `.retro/pre-compact-YYYY-MM-DD.md` (use today's date)
+   - This is a full copy of LESSONS.md before synthesis overwrites it
+3. Only proceed to Phase 1 after backup is confirmed to exist
+
+If `.retro/` directory is not accessible (e.g., non-filesystem environment), log a warning in the final LESSONS.md entry header and proceed.
+
 ### Phase 1: Read All Entries
 
 Read the full `LESSONS.md`. Extract all entries as structured data:
