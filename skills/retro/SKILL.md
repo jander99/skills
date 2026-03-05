@@ -3,7 +3,7 @@ name: retro
 description: "Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files. Auto-trigger setup: install OpenCode plugin hooks, Claude Code Stop hooks, and Cline TaskComplete hooks so retros fire automatically when all todos complete. Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem, or when setting up automatic retro triggers."
 license: MIT
 metadata:
-  version: 1.2.0
+  version: 1.3.0
   author: jeff
   audience: developers, agents
   workflow: retrospective, self-improvement, lessons-learned
@@ -11,14 +11,14 @@ metadata:
 
 ## Quick Start
 
-**Prerequisites:** Write access to `~/.config/opencode/` (for `LESSONS.md`) and project directory (for optional `.retro/`)
+**Prerequisites:** Write access to `~/.agents/lessons/` (universal cross-tool) or tool-specific config dir (see Step 4), and project directory (for optional `.retro/`)
 
 **Tools Used:** Read, Write, Edit, Bash (for `git branch --show-current`), session_read (OpenCode only — optional)
 
 **Trigger phrases:** "run retro", "do a retrospective", "what did you learn", "write lessons learned", "debrief", "post-mortem", "reflect on this session"
 
 **Output files:**
-- `~/.config/opencode/LESSONS.md` — Rolling lessons-learned log, global across all projects (primary, always written)
+- `~/.agents/lessons/LESSONS.md` — Rolling lessons-learned log, universal across all tools and projects (primary, always written)
 - `.retro/YYYY-MM-DD-HH-MM.md` — Per-session archive (optional, when dir exists or created)
 
 **Works across:** OpenCode (full transcript via `session_read`) · Claude Code · Cursor · Gemini CLI (context-window reconstruction)
@@ -29,7 +29,7 @@ metadata:
 
 - Run structured self-assessments after completing any task or session
 - Extract reusable lessons using the Sailboat rubric (Wind / Anchor / Rocks / Next)
-- Write persistent `LESSONS.md` entries to `~/.config/opencode/LESSONS.md` (global, cross-project)
+- Write persistent `LESSONS.md` entries to `~/.agents/lessons/LESSONS.md` (universal, cross-tool, cross-project)
 - Archive per-session retros to `.retro/` if desired
 - Detect available tools and gracefully degrade (full transcript → context reconstruction)
 - Compact `LESSONS.md` when it exceeds 20 entries (rolling synthesis)
@@ -125,7 +125,42 @@ Wait for human responses before writing the LESSONS.md entry. If no human respon
 
 ### Step 4: Write the LESSONS.md Entry
 
-Append to `~/.config/opencode/LESSONS.md` (global, shared across all projects — not the project root). If creating from scratch, use the **New File Template** in the [LESSONS.md Format](#lessonsmd-format) section below — it includes the required `<!-- retro:entries:0 -->` counter that compaction depends on.
+Resolve the LESSONS.md path using the detection logic below, then append. If creating from scratch, use the **New File Template** in the [LESSONS.md Format](#lessonsmd-format) section below — it includes the required `<!-- retro:entries:0 -->` counter that compaction depends on.
+
+#### Path Resolution (run once per session)
+
+Preferred target is `~/.agents/lessons/LESSONS.md` — the canonical cross-tool home used by vercel-labs/skills and documented by gptme as the cross-platform lessons standard.
+
+```bash
+# Detect the right LESSONS.md location
+if [ -d "$HOME/.agents" ]; then
+  # Universal cross-tool home (vercel-labs/skills, gptme standard) — preferred
+  LESSONS_PATH="$HOME/.agents/lessons/LESSONS.md"
+  mkdir -p "$HOME/.agents/lessons"
+elif [ -n "$OPENCODE_CLIENT" ] || [ -f "${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}/opencode.json" ]; then
+  LESSONS_PATH="${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}/LESSONS.md"
+elif [ -d "${CLAUDE_CONFIG_DIR:-$HOME/.config/claude}" ]; then
+  LESSONS_PATH="${CLAUDE_CONFIG_DIR:-$HOME/.config/claude}/LESSONS.md"
+elif [ -d "$HOME/.claude" ]; then
+  LESSONS_PATH="$HOME/.claude/LESSONS.md"
+elif [ -d "${CURSOR_CONFIG_DIR:-$HOME/.cursor}" ]; then
+  LESSONS_PATH="${CURSOR_CONFIG_DIR:-$HOME/.cursor}/LESSONS.md"
+elif [ -d "$HOME/.gemini" ]; then
+  LESSONS_PATH="$HOME/.gemini/LESSONS.md"
+elif [ -n "${CONTINUE_GLOBAL_DIR:-}" ] || [ -d "$HOME/.continue" ]; then
+  LESSONS_PATH="${CONTINUE_GLOBAL_DIR:-$HOME/.continue}/LESSONS.md"
+elif [ -d "$HOME/.codeium/windsurf" ]; then
+  LESSONS_PATH="$HOME/.codeium/windsurf/LESSONS.md"
+else
+  # Final fallback: create ~/.agents/lessons/ on first use
+  mkdir -p "$HOME/.agents/lessons"
+  LESSONS_PATH="$HOME/.agents/lessons/LESSONS.md"
+fi
+# Ensure the parent directory exists regardless of which branch was taken
+mkdir -p "$(dirname "$LESSONS_PATH")"
+```
+
+> **Note for non-shell tools** (Claude Code, Cursor, Gemini CLI): evaluate the conditions above in order and write to the first matching path. In practice, if you can see `~/.agents/` exists, always prefer `~/.agents/lessons/LESSONS.md`.
 
 ```markdown
 ## YYYY-MM-DD HH:MM | <tag1> [<tag2>]
@@ -166,7 +201,7 @@ After writing the new entry, update the entry counter in `LESSONS.md`:
 
 **Pattern promotion check:** Scan the last 20 entries.
 - If any theme appears in **3 or more** entries → candidate for promotion
-- Promoted rules go into `~/.config/opencode/AGENTS.md` (global) or project-level `AGENTS.md` / `CLAUDE.md` under a `## Learned Rules` section
+- Promoted rules go into `~/.agents/AGENTS.md` (universal) or `~/.config/opencode/AGENTS.md` (OpenCode global) or project-level `AGENTS.md` / `CLAUDE.md` under a `## Learned Rules` section
 - Example promotion: 3 entries all mention "forgot to check branch" → add rule: "Always verify branch with `git branch --show-current` before any file modifications"
 
 ---
