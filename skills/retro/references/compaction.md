@@ -75,7 +75,7 @@ Replace the detailed entries with a synthesized summary section + keep only the 
 
 For each pattern that crossed the 3× threshold:
 
-1. Check if `AGENTS.md` exists; fall back to `CLAUDE.md`; if neither, create `AGENTS.md`
+1. Check if `~/.config/opencode/AGENTS.md` exists (global, preferred); fall back to project `AGENTS.md`, then `CLAUDE.md`; if none, create `~/.config/opencode/AGENTS.md`
 2. Find or create a `## Learned Rules` section
 3. Append the promoted rule as a bullet under the relevant heading
 
