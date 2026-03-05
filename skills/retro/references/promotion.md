@@ -28,10 +28,11 @@ If yes → promote. If unsure → wait for another occurrence.
 
 ### Target File Priority
 
-1. `~/.config/opencode/AGENTS.md` (OpenCode, global — preferred for cross-project rules)
-2. `AGENTS.md` in project root (OpenCode, project-level)
-3. `CLAUDE.md` (Claude Code)
-4. Create `~/.config/opencode/AGENTS.md` if none exists
+1. `~/.agents/AGENTS.md` (universal, preferred — cross-tool global rules)
+2. `~/.config/opencode/AGENTS.md` (OpenCode global)
+3. `AGENTS.md` in project root (project-level)
+4. `CLAUDE.md` (Claude Code)
+5. Create `~/.agents/AGENTS.md` if none exists
 
 ### Section Structure
 
