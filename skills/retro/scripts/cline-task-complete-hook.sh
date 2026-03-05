@@ -59,5 +59,10 @@ RETRO_PROMPT="Task complete: \"${TASK_DESC}\". Please now run the retro skill: l
 # cancel: false     = do not cancel the task (it already completed)
 # contextModification = text injected into agent context after completion
 # errorMessage: ""  = no error
-printf '{"cancel":false,"contextModification":"%s","errorMessage":""}' \
-  "$(echo "$RETRO_PROMPT" | sed 's/"/\\"/g')"
+if command -v jq &>/dev/null; then
+  jq -n --arg msg "$RETRO_PROMPT" '{"cancel":false,"contextModification":$msg,"errorMessage":""}'
+else
+  # Fallback: manual escaping (only handles quotes; jq preferred for full safety)
+  printf '{"cancel":false,"contextModification":"%s","errorMessage":""}' \
+    "$(echo "$RETRO_PROMPT" | sed 's/"/\\"/g')"
+fi

@@ -156,11 +156,13 @@ mkdir -p .retro
 
 The archive file can include more verbose notes, tool call counts, correction loop analysis.
 
-### Step 6: Compaction Check
+### Step 6: Entry Counter + Compaction Check
 
-After writing, count entries in `LESSONS.md`. Read the `<!-- retro:entries:N -->` comment for the count; if the comment is absent, count the number of `## YYYY-` date headings as a fallback.
+After writing the new entry, update the entry counter in `LESSONS.md`:
 
-**If entries > 20:** Run compaction (see [references/compaction.md](references/compaction.md))
+1. **Read** `<!-- retro:entries:N -->` at the top of the file (fallback: count `## YYYY-` date headings if comment is absent).
+2. **Increment** N by 1 and rewrite the comment in-place: `<!-- retro:entries:N+1 -->`.
+3. **If N+1 > 20**: run compaction (see [references/compaction.md](references/compaction.md)), then reset the counter to the number of preserved entries.
 
 **Pattern promotion check:** Scan the last 20 entries.
 - If any theme appears in **3 or more** entries → candidate for promotion

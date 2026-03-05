@@ -17,7 +17,7 @@ Examples of promotable patterns:
 
 Avoid promoting:
 - **Task-specific rules**: "Always use Tailwind for this project's buttons" — too narrow
-- **Coincidental patterns**: Two similar entries in the same session (one task, not a real pattern)
+- **coincidental patterns**: Two similar entries in the same session (one task, not a real pattern)
 - **Negative rules that are already obvious**: "Don't delete production databases" — not useful
 - **Preferences masquerading as patterns**: stylistic choices that aren't errors
 

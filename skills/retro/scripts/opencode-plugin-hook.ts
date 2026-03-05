@@ -65,7 +65,7 @@ export function retroAutoTrigger(): Plugin {
 
         if (allTodosTerminal(todos)) {
           // Inject a message instructing the agent to run the retro skill.
-          // The message is appended to the session as a system/user turn so the
+          // The message is appended to the session as a user turn so the
           // agent sees it at the start of its next response.
           await ctx.session.appendMessage({
             role: "user",

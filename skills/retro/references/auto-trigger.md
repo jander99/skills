@@ -55,7 +55,7 @@ Append the entry to `LESSONS.md` with format:
 When invoked via `/retro setup` or when auto-triggered for the first time in a project:
 
 1. **Locate config file**: Check for `AGENTS.md`, `CLAUDE.md`, or `.cursorrules` in the **project root** only. Do not check or modify global config files.
-2. **Search for trigger blurb**: `grep -i "retro\|retrospective" <found-config-file>`
+2. **Search for trigger blurb**: `grep -Ei "retro|retrospective" <found-config-file>`
 3. **If NOT found**: Display the snippet below and ask: _"I notice this project doesn't have the retro auto-trigger in AGENTS.md. Would you like me to add it?"_
 4. **If confirmed**: Append the snippet from the "AGENTS.md/CLAUDE.md Snippet" section to the appropriate project-root file. If neither `AGENTS.md` nor `CLAUDE.md` exists, create `AGENTS.md` at the project root (see [references/promotion.md](promotion.md) Target File Priority).
 5. **If declined**: Note the preference and skip auto-trigger checks in future sessions.
