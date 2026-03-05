@@ -156,6 +156,8 @@ else
   mkdir -p "$HOME/.agents/lessons"
   LESSONS_PATH="$HOME/.agents/lessons/LESSONS.md"
 fi
+# Ensure the parent directory exists regardless of which branch was taken
+mkdir -p "$(dirname "$LESSONS_PATH")"
 ```
 
 > **Note for non-shell tools** (Claude Code, Cursor, Gemini CLI): evaluate the conditions above in order and write to the first matching path. In practice, if you can see `~/.agents/` exists, always prefer `~/.agents/lessons/LESSONS.md`.

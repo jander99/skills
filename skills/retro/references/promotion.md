@@ -32,7 +32,7 @@ If yes → promote. If unsure → wait for another occurrence.
 2. `~/.config/opencode/AGENTS.md` (OpenCode global)
 3. `AGENTS.md` in project root (project-level)
 4. `CLAUDE.md` (Claude Code)
-5. Create `~/.agents/AGENTS.md` if none exists
+    5. Run `mkdir -p ~/.agents` and create `~/.agents/AGENTS.md` if none exists
 
 ### Section Structure
 
