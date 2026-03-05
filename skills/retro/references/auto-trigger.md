@@ -19,7 +19,7 @@ When ALL items in your task/todo list reach a terminal state (every item is eith
 
 1. **Do not stop immediately.**
 2. Run the `retro` skill: load `@skills/retro/SKILL.md` and follow its instructions.
-3. Write the retrospective entry to `LESSONS.md` in the project root.
+3. Write the retrospective entry to the path resolved by the retro skill (`~/.agents/lessons/LESSONS.md` if `~/.agents/` exists, otherwise `LESSONS.md` in the project root).
 4. Only stop after the retro entry has been written.
 
 ### For Claude Code only — sentinel file
@@ -39,7 +39,7 @@ Use the Sailboat+Forward schema:
 - **Rocks 🪨**: What risks or unknowns remain?
 - **Next 🧭**: One concrete action for the next session
 
-Append the entry to `LESSONS.md` with format:
+Append the entry to the resolved `LESSONS.md` path (see path detection above) with format:
 
     ## YYYY-MM-DD HH:MM | <tag1> [<tag2>]
     **Wind 🌬️:** ...
