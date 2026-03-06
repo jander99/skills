@@ -5,6 +5,13 @@
 # Before using: verify hook configuration in your tool's official documentation.
 # This script is provided as a starting point, not a production-ready solution.
 # =============================================================================
+# v2 TRIGGER: This hook fires when a Cline task COMPLETES.
+# RETRO WORKFLOW:
+#   1. Call retro skill to run reflection for the completed task
+#   2. Audit previous lessons: check Applied/Violated/Irrelevant for each retrieved lesson
+#   3. The retro skill writes v2 entries with Trigger/Action/Scope headers
+# See: skills/retro/references/audit.md
+# =============================================================================
 # Cline "TaskComplete" Hook — Auto-trigger retro on task completion
 #
 # INSTALL (project-level):
