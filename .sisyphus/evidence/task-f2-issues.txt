@@ -1,0 +1,50 @@
+# Integration Test Issues — Task F2
+Run date: 2026-03-06
+
+## Issue 1 (MINOR): inject skips the v1 entry (old-v1-no-headers)
+
+**Expected**: 5 bullet points max (most recent first), including all 5 entries
+**Actual**: Only 4 bullet points output — the v1 entry "old-v1-no-headers" was silently omitted
+
+**Reason**: inject only shows entries with v2 headers (Trigger/Action/Scope), so entries missing those fields are skipped. This is arguably correct behavior (can't extract Action from v1 entries), but the spec says "5 bullet points max" suggesting all 5 should appear.
+
+**Severity**: Minor — silent omission of valid entries; may surprise users who added v1 content
+
+---
+
+## Issue 2 (MINOR): retrieve --tag git returns SYNTHESIZED entry via tag match
+
+**Expected**: entries tagged "git" in heading
+**Actual**: Returns both `## 2026-01-05 11:00 | git rebase` (correct) AND `## SYNTHESIZED — Always document before you modify | git api deploy` (correct — "git" appears in the `| git api deploy` tags)
+
+**Assessment**: This is correct behavior — "git" IS in the SYNTHESIZED heading's tags section. No defect, but worth noting that SYNTHESIZED entries with multi-word tags will appear in all matching tag searches.
+
+---
+
+## Issue 3 (OBSERVATION): validate error line numbers reference the entry heading line
+
+**Expected**: line numbers pointing to the problematic entry
+**Actual**: `ERROR: entry at line 30: missing '> Trigger:'` — line 30 is the `## 2026-02-10 16:00 | old-v1-no-headers` heading. This is accurate and helpful.
+
+**Assessment**: No defect. Line reference is correct.
+
+---
+
+## Issue 4 (OBSERVATION): migrate --dry-run output includes "Migrated 1 entry." before the diff
+
+**Expected**: Just the diff of what would change (no mention of actual write)
+**Actual**: Prints "Migrated 1 entry." before the diff, which sounds like it performed a write
+
+**Severity**: Minor UX — the phrasing is misleading for dry-run mode. Should say "Would migrate 1 entry." to be unambiguous that no file was written.
+
+**Confirmed safe**: File content unchanged after dry-run (verified by diff).
+
+---
+
+## Summary
+
+All 6 subcommands (inject, retrieve --tag, retrieve --operation, validate, migrate --dry-run, migrate, count) completed without crashes and with correct exit codes. The full loop runs cleanly end-to-end.
+
+Issues found: 2 minor behavioral observations (Issue 1 and Issue 4 warrant attention), 2 non-defect observations.
+
+No data corruption, no file modification outside /tmp/, no unexpected exit codes.
