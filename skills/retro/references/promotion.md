@@ -7,6 +7,16 @@ Promotion elevates a recurring lesson from a volatile log entry into a durable, 
 A pattern is ready to promote when it appears in **3 or more** LESSONS.md entries with the same
 root cause — regardless of how similar the surface-level task was.
 
+### Audit-Informed Promotion (v2)
+
+Audit classifications from `references/audit.md` provide an additional signal:
+
+- **Applied 3+ times across distinct sessions** → strong promotion candidate. The lesson demonstrably changed behavior; it belongs in AGENTS.md as a standing rule.
+- **Violated 1+ times** → promote with **high urgency**. A lesson that is being ignored despite injection is a systemic failure point. Promote it to AGENTS.md immediately so it fires even without lesson retrieval.
+- **Irrelevant 3+ times** → do NOT promote. Staleness is a signal the trigger is too narrow or the situation is rare. Remove from promotion pipeline.
+
+Same-session duplicates still do not count: Applied occurrences must span at least 2 distinct retro sessions.
+
 Examples of promotable patterns:
 - 3 entries all have Anchor mentioning "forgot to check current branch" → promotable
 - 4 entries have Wind mentioning "reading file before writing prevented data loss" → promotable
@@ -23,6 +33,9 @@ Avoid promoting:
 
 The litmus test: *Would this rule have prevented an Anchor event in 3+ different tasks?*
 If yes → promote. If unsure → wait for another occurrence.
+
+For Violated lessons: *Did this lesson fail to prevent the exact Anchor it warned about?*
+If yes → promote immediately, regardless of Applied count.
 
 ## Promotion Format
 

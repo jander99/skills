@@ -1,0 +1,4 @@
+=== Task 3: retrieval no-leak ===
+injection_leak_count: 0
+audit_leak_count: 2
+=== PASS ===

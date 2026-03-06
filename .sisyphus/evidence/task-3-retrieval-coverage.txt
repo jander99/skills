@@ -1,0 +1,10 @@
+=== Task 3: retrieval coverage ===
+### 1. Session-Start Retrieval
+### 2. Pre-Risk Retrieval
+Before executing a high-risk operation, retrieve lessons specifically matching that operation type.
+taxonomy match count: 11
+bash skills/retro/scripts/retro-lessons.sh retrieve --recent 3
+bash skills/retro/scripts/retro-lessons.sh retrieve --operation <op-type>
+> bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-commit
+### Zero-Match Fallback
+=== PASS ===
