@@ -1,0 +1,17 @@
+39:1. **Reflect** — assess the session via `session_read` transcript (OpenCode) or context-window reconstruction (all other tools). Identify correction loops, tool failures, and user redirects. Ask the human up to 3 targeted questions before writing. See [references/session-read.md](references/session-read.md).
+41:2. **Store** — append a v2 entry to `~/.agents/lessons/LESSONS.md`, increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
+43:3. **Retrieve** — at session start, run `retro-lessons.sh retrieve --recent 3`. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --operation <op>`. See [references/retrieval.md](references/retrieval.md).
+45:4. **Inject** — format retrieved lessons into a compact `## Relevant Lessons` block (≤500 tokens, ≤5 bullets) and place in context before acting. Each bullet: `- **[tag]**: Action (Trigger: trigger)`. See [references/injection.md](references/injection.md).
+47:5. **Verify** — after writing the Sailboat rubric, append an `> Audit:` block classifying each injected lesson as **Applied**, **Violated**, or **Irrelevant**. Violations generate a new reinforcing entry. See [references/audit.md](references/audit.md).
+68:Full validation rules and examples → [references/schema.md](references/schema.md).
+98:Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.md](references/auto-trigger.md).
+106:| [references/schema.md](references/schema.md) | v2 entry format, tag rules, scope conventions, validation rules |
+107:| [references/retrieval.md](references/retrieval.md) | When/how to retrieve — session-start vs pre-risk, retrieval algorithm, zero-match fallback |
+108:| [references/injection.md](references/injection.md) | Injection format, two-layer injection, 500-token budget, anti-patterns |
+109:| [references/audit.md](references/audit.md) | 5-phase audit protocol — Applied/Violated/Irrelevant, violations → new entries |
+110:| [references/compaction.md](references/compaction.md) | Compact when N>20 — archive, pattern detection, SYNTHESIZED output |
+111:| [references/promotion.md](references/promotion.md) | Promote 3+ occurrence patterns to AGENTS.md / CLAUDE.md |
+112:| [references/session-read.md](references/session-read.md) | `session_read` usage in OpenCode, graceful degradation |
+113:| [references/auto-trigger.md](references/auto-trigger.md) | Hook setup for OpenCode, Claude Code, Cline; AGENTS.md snippet |
+74:`skills/retro/scripts/retro-lessons.sh` — subcommands:
+114:| [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate subcommands |
