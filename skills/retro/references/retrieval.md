@@ -8,14 +8,14 @@ There are two retrieval contexts:
 
 ### 1. Session-Start Retrieval
 
-At the start of a new agent session, retrieve the 3 most recent general lessons to prime situational awareness.
+At the start of a new agent session, retrieve the 5 most recent general lessons to prime situational awareness.
 
 **Trigger:** Session begins (tool loaded, task starts).
 
 **Command:**
 
 ```bash
-bash skills/retro/scripts/retro-lessons.sh retrieve --recent 3
+bash skills/retro/scripts/retro-lessons.sh retrieve --recent 5
 ```
 
 **Purpose:** Surfaces institutional knowledge the agent might not have loaded otherwise. Equivalent to a pre-flight checklist read at the start of a flight.
@@ -71,7 +71,7 @@ If no entries match the tag or scope query, the parser returns the 3 most recent
 
 ### Staleness Handling
 
-Entries classified as `irrelevant` in 3 or more audits are deprioritized: they appear only when no higher-ranked match exists. The parser does not delete them; compaction is responsible for removal.
+Entries classified as `irrelevant` in 3 or more audits are deprioritized: they appear only when no higher-ranked match exists. The parser does not delete them; compaction is responsible for removal. *(not yet implemented — planned for v2.1)*
 
 See `references/compaction.md` for compaction policy.
 

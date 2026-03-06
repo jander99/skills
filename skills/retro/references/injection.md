@@ -126,7 +126,7 @@ For targeted pre-risk injection, retrieve first then format manually, or use:
 
 ```bash
 bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-push | \
-  bash skills/retro/scripts/retro-lessons.sh inject --budget 300 -
+  bash skills/retro/scripts/retro-lessons.sh inject --tag git-push --budget 300 -
 ```
 
 Default file: `~/.agents/lessons/LESSONS.md`
