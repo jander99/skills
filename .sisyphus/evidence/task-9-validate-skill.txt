@@ -1,0 +1,47 @@
+Validating Agent Skill...
+
+╭─────────────────────────────────────────╮
+│  Skill Validation: retro
+╰─────────────────────────────────────────╯
+
+[0;31m🔴 Errors:      0[0m
+[1;33m🟡 Warnings:    0[0m
+[0;32m🟢 Suggestions: 3[0m
+
+[0;32m🟢 Suggestions:[0m
+   [0;32m•[0m Name conflict check not implemented - manually verify skill name is unique
+   [0;32m•[0m Consider adding 'version' to metadata
+   [0;32m•[0m Consider adding decision matrix or quick reference table
+
+Files checked:
+   [0;32m✓[0m SKILL.md (148 lines, ~1652 tokens)
+   [0;32m✓[0m references/audit.md
+   [0;32m✓[0m references/auto-trigger.md
+   [0;32m✓[0m references/compaction.md
+   [0;32m✓[0m references/injection.md
+   [0;32m✓[0m references/migration.md
+   [0;32m✓[0m references/promotion.md
+   [0;32m✓[0m references/retrieval.md
+   [0;32m✓[0m references/schema.md
+   [0;32m✓[0m references/session-read.md
+   [0;32m✓[0m scripts/claude-code-stop-hook.sh
+   [0;32m✓[0m scripts/cline-task-complete-hook.sh
+   [0;32m✓[0m scripts/opencode-plugin-hook.ts
+   [0;32m✓[0m scripts/retro-lessons.sh
+
+═══════════════════════════════════════════
+GRADE BREAKDOWN:
+
+Description Quality        35/35  (100%)
+Structure & Organization  25/25  (100%)
+Content Quality           20/20  (100%)
+Technical Implementation  15/15  (100%)
+Specification Compliance   5/5   (100%)
+
+═══════════════════════════════════════════
+TOTAL SCORE: [0;34m100/100[0m
+
+Grade: [0;32mA (Excellent)[0m
+
+Status: [0;32m✅ PASSED[0m
+

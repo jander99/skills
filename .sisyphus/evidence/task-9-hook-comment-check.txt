@@ -1,0 +1,6 @@
+skills/retro/scripts/claude-code-stop-hook.sh:8:# v2 TRIGGER: This hook fires at session END.
+skills/retro/scripts/claude-code-stop-hook.sh:9:# RETRO WORKFLOW:
+skills/retro/scripts/cline-task-complete-hook.sh:8:# v2 TRIGGER: This hook fires when a Cline task COMPLETES.
+skills/retro/scripts/cline-task-complete-hook.sh:9:# RETRO WORKFLOW:
+skills/retro/scripts/opencode-plugin-hook.ts:38:// v2 TRIGGER: This hook integrates with OpenCode session lifecycle.
+skills/retro/scripts/opencode-plugin-hook.ts:39:// RETRO WORKFLOW:
