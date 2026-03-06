@@ -40,7 +40,7 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 
 2. **Store** — append a v2 entry to `~/.agents/lessons/LESSONS.md`, increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
 
-3. **Retrieve** — at session start, run `retro-lessons.sh retrieve --recent 3`. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --operation <op>`. See [references/retrieval.md](references/retrieval.md).
+3. **Retrieve** — at session start, run `retro-lessons.sh retrieve --recent 5`. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --operation <op>`. See [references/retrieval.md](references/retrieval.md).
 
 4. **Inject** — format retrieved lessons into a compact `## Relevant Lessons` block (≤500 tokens, ≤5 bullets) and place in context before acting. Each bullet: `- **[tag]**: Action (Trigger: trigger)`. See [references/injection.md](references/injection.md).
 
@@ -50,7 +50,7 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 
 ## Entry Format
 
-v2 entries have a 7-line structure — heading + 3 retrieval headers + 4 Sailboat fields:
+v2 entries have an 8-line structure — heading + 3 retrieval headers + 4 Sailboat fields:
 
 ```markdown
 ## YYYY-MM-DD HH:MM | tag1 tag2
@@ -74,7 +74,7 @@ Full validation rules and examples → [references/schema.md](references/schema.
 `skills/retro/scripts/retro-lessons.sh` — subcommands:
 
 ```bash
-retro-lessons.sh inject                        # session-start: recent 3 lessons → ## Relevant Lessons block
+retro-lessons.sh inject                        # session-start: top 5 lessons → ## Relevant Lessons block
 retro-lessons.sh retrieve --operation git-push # pre-risk: targeted retrieval by op type
 retro-lessons.sh retrieve --tag planning       # retrieve by tag
 retro-lessons.sh validate                      # check LESSONS.md file health + entry counter
@@ -109,6 +109,7 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 | [references/audit.md](references/audit.md) | 5-phase audit protocol — Applied/Violated/Irrelevant, violations → new entries |
 | [references/compaction.md](references/compaction.md) | Compact when N>20 — archive, pattern detection, SYNTHESIZED output |
 | [references/promotion.md](references/promotion.md) | Promote 3+ occurrence patterns to AGENTS.md / CLAUDE.md |
+| [references/migration.md](references/migration.md) | v1-to-v2 migration guide |
 | [references/session-read.md](references/session-read.md) | `session_read` usage in OpenCode, graceful degradation |
 | [references/auto-trigger.md](references/auto-trigger.md) | Hook setup for OpenCode, Claude Code, Cline; AGENTS.md snippet |
 | [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate subcommands |

@@ -138,24 +138,46 @@ cmd_retrieve() {
     local body="${ENTRY_BODIES[$i]}" head="${ENTRY_HEADS[$i]}"
     local tags; tags=$(heading_tags "$head")
 
-    # AND filters
     if [[ -n "$tag" ]] && ! echo "$tags" | grep -qi "$tag"; then continue; fi
     if [[ -n "$scope" ]] && ! echo "$body" | grep -qi "> Scope:.*$scope"; then continue; fi
-    if [[ -n "$operation" ]] && ! echo "$body" | grep -qi "> Trigger:.*$operation"; then continue; fi
+    if [[ -n "$operation" ]] && ! echo "$body" | grep -qi "> Scope:.*$operation"; then continue; fi
     matches+=("$i")
   done
 
-  # --recent: take last N (newest = last in file = last in array)
+  if [[ ${#matches[@]} -eq 0 && ( -n "$tag" || -n "$scope" || -n "$operation" ) ]]; then
+    local fallback=()
+    for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do
+      local body="${ENTRY_BODIES[$i]}"
+      if echo "$body" | grep -qi "> Scope:.*general"; then
+        fallback+=("$i")
+      fi
+    done
+    if [[ ${#fallback[@]} -eq 0 ]]; then
+      for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do fallback+=("$i"); done
+    fi
+    local fb_start=$(( ${#fallback[@]} - 3 ))
+    [[ $fb_start -lt 0 ]] && fb_start=0
+    matches=()
+    for (( i=fb_start; i<${#fallback[@]}; i++ )); do matches+=("${fallback[$i]}"); done
+  fi
+
   if [[ $recent -gt 0 ]]; then
     local start=$(( ${#matches[@]} - recent ))
     [[ $start -lt 0 ]] && start=0
     local trimmed=()
     for (( i=start; i<${#matches[@]}; i++ )); do trimmed+=("${matches[$i]}"); done
-    # reverse for newest-first
     local rev=()
     for (( i=${#trimmed[@]}-1; i>=0; i-- )); do rev+=("${trimmed[$i]}"); done
     matches=("${rev[@]+"${rev[@]}"}")
+  else
+    local rev=()
+    for (( i=${#matches[@]}-1; i>=0; i-- )); do rev+=("${matches[$i]}"); done
+    matches=("${rev[@]+"${rev[@]}"}")
   fi
+
+  local capped=()
+  for (( i=0; i<${#matches[@]} && i<5; i++ )); do capped+=("${matches[$i]}"); done
+  matches=("${capped[@]+"${capped[@]}"}")
 
   local first=1
   for idx in "${matches[@]+"${matches[@]}"}"; do
@@ -165,8 +187,7 @@ cmd_retrieve() {
     if [[ $full -eq 1 ]]; then
       printf '%s\n' "$body"
     else
-      # header-only: heading + Trigger/Action/Scope lines
-      echo "$body" | grep -E '^## |^> (Trigger|Action|Scope):'
+      echo "$body" | grep -E '^## |^> (Trigger|Action|Scope):' || true
     fi
   done
 }
@@ -174,10 +195,11 @@ cmd_retrieve() {
 # ── inject ───────────────────────────────────────────────────────────────────
 
 cmd_inject() {
-  local budget=500 file="$DEFAULT_FILE"
+  local budget=500 file="$DEFAULT_FILE" tag_arg="general"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --budget) budget="$2"; shift 2 ;;
+      --tag)    tag_arg="$2"; shift 2 ;;
       *)        file="$1";   shift ;;
     esac
   done
@@ -194,8 +216,16 @@ cmd_inject() {
     action=$(echo "$body" | grep '> Action:' | head -1 | sed 's/> Action:[[:space:]]*//' || true)
     [[ -z "$trigger" || -z "$action" ]] && continue
 
-    local tags; tags=$(heading_tags "$head")
-    local bullet="- **[${tags:-[untagged]}]**: ${action} (Trigger: ${trigger})"
+    local all_tags first_tag
+    all_tags=$(heading_tags "$head")
+    first_tag=$(echo "$all_tags" | awk '{print $1}')
+    [[ -z "$first_tag" ]] && first_tag="untagged"
+
+    if [[ ${#action} -gt 80 ]]; then
+      action="${action:0:80}…"
+    fi
+
+    local bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
     local est; est=$(token_est "$output$bullet")
     [[ $est -gt $budget ]] && break
     output+="$bullet"$'\n'
@@ -203,7 +233,9 @@ cmd_inject() {
   done
 
   [[ -z "$output" ]] && exit 0
-  printf '## Relevant Lessons\n%s' "$output"
+  printf '## Relevant Lessons\n'
+  printf '<!-- lessons-injected: %s %s -->\n\n' "${tag_arg}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s' "$output"
 }
 
 # ── count ────────────────────────────────────────────────────────────────────
@@ -250,7 +282,7 @@ cmd_migrate() {
 
     if [[ $prev_was_heading -eq 1 ]]; then
       # First line after a heading — check if it's already a v2 header
-      if [[ "$line" =~ ^'> Trigger:' ]]; then
+      if [[ "$line" == "> Trigger:"* ]]; then
         # Already v2 — pass through
         printf '%s\n' "$prev_head" >> "$tmp"
         prev_was_heading=0; prev_head=""
@@ -272,12 +304,12 @@ cmd_migrate() {
     (( migrated++ )) || true
   fi
 
-  echo "Migrated $migrated entr$([ $migrated -eq 1 ] && echo 'y' || echo 'ies')." >&2
-
   if [[ $dry_run -eq 1 ]]; then
+    echo "Would migrate $migrated entr$([ $migrated -eq 1 ] && echo 'y' || echo 'ies')." >&2
     diff -u "$file" "$tmp" || true
     rm -f "$tmp"
   else
+    echo "Migrated $migrated entr$([ $migrated -eq 1 ] && echo 'y' || echo 'ies')." >&2
     mv "$tmp" "$file"
   fi
 }

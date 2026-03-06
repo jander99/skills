@@ -31,8 +31,8 @@ retro-lessons.sh migrate ~/.agents/lessons/LESSONS.md
 - Detects entries missing `> Trigger:` / `> Action:` / `> Scope:` lines.
 - Inserts three placeholder lines directly after each headingless `##` heading:
   ```
-  > Trigger: (TODO: infer from Anchor)
-  > Action: (TODO: infer from Next)
+  > Trigger: [migrated — fill in manually]
+  > Action: [migrated — fill in manually]
   > Scope: general
   ```
 - Leaves all Sailboat body fields untouched.
@@ -101,8 +101,8 @@ immediately after linking to avoid losing time to sub-issue priority collisions.
 
 ```markdown
 ## 2026-03-06 08:36 | planning api context-management
-> Trigger: (TODO: infer from Anchor)
-> Action: (TODO: infer from Next)
+> Trigger: [migrated — fill in manually]
+> Action: [migrated — fill in manually]
 > Scope: general
 
 **Wind 🌬️:** Reusing the repo's existing Epic/Story convention and creating all issues from

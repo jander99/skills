@@ -70,7 +70,7 @@ Session-start injection:
 ```markdown
 ## Relevant Lessons
 
-<!-- lessons-injected: tag1,tag2 TIMESTAMP -->
+<!-- lessons-injected: tag1 tag2 TIMESTAMP -->
 
 - **[tag]**: Action (Trigger: trigger)
 ...
@@ -92,10 +92,10 @@ Pre-risk injection:
 Every injection block MUST include:
 
 ```html
-<!-- lessons-injected: tag1,tag2 ISO8601_TIMESTAMP -->
+<!-- lessons-injected: tag1 tag2 ISO8601_TIMESTAMP -->
 ```
 
-- Tags: comma-separated list of tags or operation type that triggered this injection
+- Tags: space-separated list of tags or operation type that triggered this injection
 - Timestamp: ISO 8601 UTC format (e.g., `2026-03-06T14:23:00Z`)
 - This comment is read by the audit protocol to identify which lessons were active in a session
 
@@ -126,7 +126,7 @@ For targeted pre-risk injection, retrieve first then format manually, or use:
 
 ```bash
 bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-push | \
-  bash skills/retro/scripts/retro-lessons.sh inject --budget 300
+  bash skills/retro/scripts/retro-lessons.sh inject --budget 300 -
 ```
 
 Default file: `~/.agents/lessons/LESSONS.md`

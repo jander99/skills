@@ -13,7 +13,7 @@ If no lessons were injected in the session, write: `> Audit: no lessons active t
 Scan the session context (or recent output) for `<!-- lessons-injected: ... -->` markers left by the injection protocol.
 
 ```
-<!-- lessons-injected: git-hygiene,tool-use 2026-03-06T09:00:00Z -->
+<!-- lessons-injected: git-hygiene tool-use 2026-03-06T09:00:00Z -->
 ```
 
 Each marker identifies which tags and timestamp were injected. Extract the list of injected lessons from LESSONS.md that match those tags and were written before the timestamp.
