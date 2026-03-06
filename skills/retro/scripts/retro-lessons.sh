@@ -15,7 +15,7 @@ Subcommands:
   retrieve [OPTIONS] [FILE]  Filter and print matching entries
     --tag <tag>              Match entries whose heading contains <tag> (after |)
     --scope <pattern>        Match entries where > Scope: contains <pattern>
-    --operation <op>         Match entries where > Trigger: contains <op>
+    --operation <op>         Match entries where > Scope: contains <op>
     --recent <N>             Return last N entries (newest first)
     --full                   Include full body (Sailboat fields)
   inject [--budget N] [FILE] Print top-5 lessons formatted for prompt context
