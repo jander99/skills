@@ -1,0 +1,68 @@
+=== inject default budget (500 tokens) ===
+## Relevant Lessons
+- **[git-hygiene planning]**: Validate working directory and branch before any write operation (Trigger: Starting autonomous implementation in repositories with multiple worktrees)
+- **[bash-scripting error-handling]**: Always use set -euo pipefail and quote variables (Trigger: Writing bash scripts that process files)
+- **[git-hygiene tool-use]**: Check branch and worktree context first, then edit (Trigger: Before changing files in a shared repo worktree)
+exit: 0
+
+=== inject --budget 50 (tight budget) ===
+## Relevant Lessons
+- **[git-hygiene planning]**: Validate working directory and branch before any write operation (Trigger: Starting autonomous implementation in repositories with multiple worktrees)
+- **[bash-scripting error-handling]**: Always use set -euo pipefail and quote variables (Trigger: Writing bash scripts that process files)
+exit: 0
+
+=== migrate --dry-run ===
+Migrated 1 entry.
+--- /tmp/test-lessons.md	2026-03-06 18:18:40.903127822 -0500
++++ /tmp/tmp.SFx8y1JrQh	2026-03-06 18:20:29.782684048 -0500
+@@ -19,6 +19,9 @@
+ **Next 🧭:** Add shellcheck to CI for all .sh files.
+ 
+ ## 2026-01-10 09:00 | git-hygiene
++> Trigger: [migrated — fill in manually]
++> Action: [migrated — fill in manually]
++> Scope: general
+ **Wind 🌬️:** This is a v1 entry without Trigger/Action/Scope headers.
+ **Anchor ⚓:** Old format before schema v2 was introduced.
+ **Rocks 🪨:** Parser must handle these gracefully.
+exit: 0
+
+=== migrate in-place on copy ===
+Migrated 1 entry.
+exit: 0
+--- result ---
+<!-- retro:entries:4 -->
+
+## 2026-02-15 10:00 | git-hygiene tool-use
+> Trigger: Before changing files in a shared repo worktree
+> Action: Check branch and worktree context first, then edit
+> Scope: git-commit
+**Wind 🌬️:** Verifying branch before edits prevented accidental writes to main.
+**Anchor ⚓:** I previously assumed branch context and lost time unwinding mistakes.
+**Rocks 🪨:** In multi-worktree setups, stale assumptions can still leak across sessions.
+**Next 🧭:** Run `git branch --show-current` at the start of every coding task.
+
+## 2026-03-01 14:30 | bash-scripting error-handling
+> Trigger: Writing bash scripts that process files
+> Action: Always use set -euo pipefail and quote variables
+> Scope: *.sh
+**Wind 🌬️:** Strict mode caught an unset variable bug immediately.
+**Anchor ⚓:** Silent failures in bash without strict mode caused data loss once.
+**Rocks 🪨:** Pipelines still need careful handling of exit codes.
+**Next 🧭:** Add shellcheck to CI for all .sh files.
+
+## 2026-01-10 09:00 | git-hygiene
+> Trigger: [migrated — fill in manually]
+> Action: [migrated — fill in manually]
+> Scope: general
+**Wind 🌬️:** This is a v1 entry without Trigger/Action/Scope headers.
+**Anchor ⚓:** Old format before schema v2 was introduced.
+**Rocks 🪨:** Parser must handle these gracefully.
+**Next 🧭:** Run migrate subcommand to upgrade.
+
+## SYNTHESIZED — Worktree safety and branch checks | git-hygiene planning
+> Trigger: Starting autonomous implementation in repositories with multiple worktrees
+> Action: Validate working directory and branch before any write operation
+> Scope: general
+Branch confusion is a repeated root cause for avoidable rework.
+Explicit preflight checks reduce silent scope drift and keep file changes contained.
