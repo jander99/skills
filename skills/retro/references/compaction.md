@@ -26,7 +26,9 @@ If `.retro/` directory is not accessible (e.g., non-filesystem environment), log
 Read the full `LESSONS.md`. Extract all entries as structured data:
 - Date/time
 - Tags
+- Trigger / Action / Scope header lines (v2 schema)
 - Wind / Anchor / Rocks / Next content
+- Audit section if present (`> Audit:` lines)
 
 ### Phase 2: Pattern Detection
 
@@ -39,9 +41,15 @@ Clustering heuristic — group entries that share:
 
 **Promotion threshold:** 3 or more entries with the same root cause → promote to durable rule.
 
+**Staleness scoring (v2):** Count the number of times each entry has been classified `Irrelevant` across all audits in the file. Entries with 3 or more `Irrelevant` audit records are stale candidates — deprioritize or remove them during synthesis rather than propagating them to the SYNTHESIZED entry.
+
 ### Phase 3: Write Synthesized LESSONS.md
 
-Replace the detailed entries with a synthesized summary section + keep only the most recent 5 raw entries (for recency context):
+Replace the detailed entries with a synthesized summary section + keep only the most recent 5 raw entries (for recency context).
+
+When writing the SYNTHESIZED entry for a pattern cluster, carry forward the **most specific** Trigger/Action/Scope from the contributing entries. If contributing entries have conflicting Scope values, use the broader scope or `general`.
+
+When merging audit histories: a pattern that was Applied in 3+ source entries is a strong promotion candidate; a pattern that was Irrelevant in 3+ source entries should be omitted from the SYNTHESIZED entry.
 
 ```markdown
 # Lessons Learned
@@ -53,16 +61,18 @@ Replace the detailed entries with a synthesized summary section + keep only the 
 
 ## Synthesized Patterns
 
-### Planning (observed 6×)
-- Breaking tasks into read-first/write-second phases consistently prevents destructive overwrites.
-- Asking 1–2 clarifying questions upfront eliminates mid-task redirects.
+## SYNTHESIZED — Branch verification before writes | git-hygiene planning
+> Trigger: Starting autonomous implementation in any repository
+> Action: Run git branch --show-current and confirm working directory before any file edit
+> Scope: git-commit
+Branch confusion is a repeated root cause for avoidable rework across 4 sessions.
+Explicit preflight checks reduce silent scope drift and keep file changes contained.
 
-### Tool Use (observed 4×)
-- Always locate `package.json` / project root with `glob` before assuming structure.
-- Verify branch name with `git branch --show-current` before any file modification.
-
-### Error Handling (observed 3×)
-- File encoding assumptions (UTF-8) fail on legacy codebases; always check encoding on first read.
+## SYNTHESIZED — Read before write | tool-use
+> Trigger: Any operation that modifies an existing file
+> Action: Read the file fully before writing or appending — never overwrite blindly
+> Scope: file-deletion
+Observed 3 times: blind overwrites caused data loss and required manual recovery.
 
 ---
 

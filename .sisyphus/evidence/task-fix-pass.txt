@@ -1,0 +1,19 @@
+
+---
+## Fix Pass: F1 oracle + F2 integration test issues
+Date: 2026-03-06
+
+All 12 fixes applied across 6 files:
+  - skills/retro/SKILL.md (FIX 1, 2, 3)
+  - skills/retro/scripts/retro-lessons.sh (FIX 4, 5, 6, 7, 8)
+  - skills/retro/references/injection.md (FIX 9, 11)
+  - skills/retro/references/audit.md (FIX 10)
+  - skills/retro/references/migration.md (FIX 12)
+
+Validation result:
+  TOTAL SCORE: 100/100
+  Grade: A (Excellent)
+  Status: PASSED
+  0 errors, 0 warnings, 3 suggestions
+
+Commit: 894c2f1 (feature/retro-v2-retrieve-verify)

@@ -35,6 +35,13 @@
 
 import type { Plugin, ToolExecuteAfterHookContext } from "@opencode-ai/plugin";
 
+// v2 TRIGGER: This hook integrates with OpenCode session lifecycle.
+// RETRO WORKFLOW:
+//   - SESSION_START: Retrieve relevant lessons with retro-lessons.sh inject
+//     and prepend to the session context for proactive guidance.
+//   - SESSION_END: Call retro skill, write v2 entries with Trigger/Action/Scope headers.
+// See: skills/retro/references/injection.md, skills/retro/references/retrieval.md
+
 type TodoStatus = "pending" | "in_progress" | "completed" | "cancelled";
 interface Todo {
   content: string;

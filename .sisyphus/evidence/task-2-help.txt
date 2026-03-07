@@ -1,0 +1,17 @@
+Usage: retro-lessons.sh <subcommand> [options] [FILE]
+
+Default FILE: ~/.agents/lessons/LESSONS.md  (use - for stdin)
+
+Subcommands:
+  validate [FILE]            Validate all v2 entry blocks; exit 1 if any bad
+  retrieve [OPTIONS] [FILE]  Filter and print matching entries
+    --tag <tag>              Match entries whose heading contains <tag> (after |)
+    --scope <pattern>        Match entries where > Scope: contains <pattern>
+    --operation <op>         Match entries where > Trigger: contains <op>
+    --recent <N>             Return last N entries (newest first)
+    --full                   Include full body (Sailboat fields)
+  inject [--budget N] [FILE] Print top-5 lessons formatted for prompt context
+  count [FILE]               Print number of v2 entries
+  migrate [--dry-run] [FILE] Upgrade v1 entries to v2 by injecting placeholder headers
+  --help                     Show this help and exit
+exit: 0

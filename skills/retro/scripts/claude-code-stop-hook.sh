@@ -5,6 +5,14 @@
 # Before using: verify hook configuration in your tool's official documentation.
 # This script is provided as a starting point, not a production-ready solution.
 # =============================================================================
+# v2 TRIGGER: This hook fires at session END.
+# RETRO WORKFLOW:
+#   1. Call retro skill to run reflection
+#   2. Retrieve lessons with: retro-lessons.sh inject ~/.agents/lessons/LESSONS.md
+#      (inject relevant lessons into the NEXT session's context)
+#   3. The retro skill writes v2 entries with Trigger/Action/Scope headers
+# See: skills/retro/references/auto-trigger.md
+# =============================================================================
 # Claude Code "Stop" Hook — Auto-trigger retro when task list is done
 #
 # INSTALL (project-level):

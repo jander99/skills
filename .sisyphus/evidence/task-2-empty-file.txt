@@ -1,0 +1,15 @@
+=== count nonexistent ===
+0
+exit: 0
+
+=== count empty file ===
+0
+exit: 0
+
+=== inject missing file ===
+exit: 0
+
+=== validate missing file (creates template) ===
+exit: 0
+file created: YES
+<!-- retro:entries:0 -->
