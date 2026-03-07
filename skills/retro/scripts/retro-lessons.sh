@@ -28,8 +28,6 @@ EOF
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-resolve_file() { local arg="${1:-}"; [[ -z "$arg" || "$arg" == "-" ]] && echo "-" || echo "$arg"; }
-
 # Populates ENTRY_HEADS / ENTRY_LINES / ENTRY_BODIES from FILE (or stdin if -)
 parse_entries() {
   local file="$1"
@@ -61,8 +59,13 @@ _read_input() {
 # Extract tag(s) from a heading line (text after last |, trimmed, lowercased)
 heading_tags() {
   local head="$1"
-  local after_pipe="${head##*|}"
-  echo "$after_pipe" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  # Guard: if no | present, heading has no tags
+  if [[ "$head" != *"|"* ]]; then
+    echo "[untagged]"
+    return
+  fi
+  local tags_part="${head##*|}"
+  echo "$tags_part" | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
 # Estimate token count: words * 1.3, truncated
@@ -109,6 +112,17 @@ cmd_validate() {
           echo "WARN: entry at line $ln: missing body field matching $field" >&2
         fi
       done
+    else
+      local synth_body_line
+      synth_body_line=$(echo "$body" | grep -v '^> ' | grep -v '^## ' | grep -v '^[[:space:]]*$' | head -1 || true)
+      if [[ -z "$synth_body_line" ]]; then
+        echo "WARN: SYNTHESIZED entry has no body content: $head" >&2
+      fi
+    fi
+
+    if [[ "$(heading_tags "$head")" == "[untagged]" ]]; then
+      echo "  WARN: heading has no tags: $head"
+      warnings=$((warnings + 1)) 2>/dev/null || true
     fi
   done
   [[ $errors -gt 0 ]] && exit 1 || exit 0
@@ -120,10 +134,10 @@ cmd_retrieve() {
   local tag="" scope="" operation="" recent=0 full=0 file="$DEFAULT_FILE"
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --tag)      tag="$2";       shift 2 ;;
-      --scope)    scope="$2";     shift 2 ;;
-      --operation) operation="$2"; shift 2 ;;
-      --recent)   recent="$2";    shift 2 ;;
+      --tag)      [[ $# -lt 2 ]] && { echo "ERROR: --tag requires a value" >&2; exit 1; }; tag="$2";       shift 2 ;;
+      --scope)    [[ $# -lt 2 ]] && { echo "ERROR: --scope requires a value" >&2; exit 1; }; scope="$2";     shift 2 ;;
+      --operation) [[ $# -lt 2 ]] && { echo "ERROR: --operation requires a value" >&2; exit 1; }; operation="$2"; shift 2 ;;
+      --recent)   [[ $# -lt 2 ]] && { echo "ERROR: --recent requires a value" >&2; exit 1; }; recent="$2";    shift 2 ;;
       --full)     full=1;         shift ;;
       -*)         echo "WARN: unknown option $1" >&2; shift ;;
       *)          file="$1";      shift ;;
@@ -225,6 +239,8 @@ cmd_inject() {
       action="${action:0:80}…"
     fi
 
+    trigger="${trigger:0:80}"
+
     local bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
     local est; est=$(token_est "$output$bullet")
     [[ $est -gt $budget ]] && break
@@ -265,7 +281,7 @@ cmd_migrate() {
   fi
 
   local tmp; tmp=$(mktemp)
-  local migrated=0 skip_next=0
+  local migrated=0
   local prev_was_heading=0 prev_head=""
 
   while IFS= read -r line; do
@@ -276,7 +292,7 @@ cmd_migrate() {
         printf '> Trigger: [migrated — fill in manually]\n> Action: [migrated — fill in manually]\n> Scope: general\n' >> "$tmp"
         (( migrated++ )) || true
       fi
-      prev_was_heading=1; prev_head="$line"; skip_next=0
+      prev_was_heading=1; prev_head="$line"
       continue
     fi
 

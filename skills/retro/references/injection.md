@@ -10,7 +10,7 @@ At the start of a new agent session, inject a `## Relevant Lessons` block with t
 
 **When:** After loading skills, before first user interaction.
 
-**Source:** `retrieve --recent 3` (see `references/retrieval.md`).
+**Source:** `retrieve --recent 5` (see `references/retrieval.md`).
 
 **Purpose:** Primes the agent with recent institutional knowledge, equivalent to reading meeting notes before a standup.
 
@@ -120,7 +120,7 @@ Use the `inject` subcommand:
 bash skills/retro/scripts/retro-lessons.sh inject [--budget <tokens>] [file]
 ```
 
-This combines retrieval (recent 3) + formatting into a ready-to-paste block.
+This formats up to 5 recent entries from LESSONS.md directly into a ready-to-paste block.
 
 For targeted pre-risk injection, retrieve first then format manually, or use:
 

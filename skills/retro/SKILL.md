@@ -77,7 +77,7 @@ Full validation rules and examples → [references/schema.md](references/schema.
 retro-lessons.sh inject                        # session-start: top 5 lessons → ## Relevant Lessons block
 retro-lessons.sh retrieve --operation git-push # pre-risk: targeted retrieval by op type
 retro-lessons.sh retrieve --tag planning       # retrieve by tag
-retro-lessons.sh validate                      # check LESSONS.md file health + entry counter
+  retro-lessons.sh validate                      # check LESSONS.md file health
 retro-lessons.sh count                         # show entry count
 ```
 

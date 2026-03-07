@@ -55,7 +55,7 @@ Agents should also retrieve for any operation where a past Anchor in LESSONS.md 
 The parser applies these rules in order:
 
 1. **Tag match** (`--tag <tag>`): Return all entries whose heading tags contain the given tag (case-insensitive, normalized).
-2. **Scope match** (`--operation <op>` or `--scope <scope>`): Return entries whose `> Scope:` line exactly matches the operation type, or whose scope is a glob that matches the target path.
+2. **Scope match** (`--operation <op>` or `--scope <scope>`): Return entries whose `> Scope:` line value contains the given string (case-insensitive substring match).
 3. **Recency** (`--recent <N>`): Return the N most recent entries regardless of tag or scope.
 4. **Combined**: Tag and scope filters can be combined; entries satisfying both are ranked first.
 
