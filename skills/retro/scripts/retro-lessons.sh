@@ -129,53 +129,75 @@ cmd_validate() {
       *)         file="$1";        shift ;;
     esac
   done
-  if [[ -z "$file" ]]; then
+
+  # Helper: validate a single file
+  _validate_single() {
+    local f="$1"
+    if [[ ! -f "$f" && "$f" != "-" ]]; then
+      mkdir -p "$(dirname "$f")"
+      printf '<!-- retro:entries:0 -->\n' > "$f"
+      return 0
+    fi
+    local content; content=$(_read_input "$f")
+    [[ -z "$content" ]] && return 0
+    parse_entries "$f"
+    local errors=0 i
+    for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do
+      local body="${ENTRY_BODIES[$i]}" head="${ENTRY_HEADS[$i]}" ln="${ENTRY_LINES[$i]}"
+      local is_synth=0
+      [[ "$head" =~ ^##[[:space:]]+SYNTHESIZED ]] && is_synth=1
+      if ! echo "$body" | grep -q '> Trigger:'; then
+        echo "ERROR: $f line $ln: missing '> Trigger:'" >&2; (( errors++ )) || true
+      fi
+      if ! echo "$body" | grep -q '> Action:'; then
+        echo "ERROR: $f line $ln: missing '> Action:'" >&2; (( errors++ )) || true
+      fi
+      if ! echo "$body" | grep -q '> Scope:'; then
+        echo "ERROR: $f line $ln: missing '> Scope:'" >&2; (( errors++ )) || true
+      fi
+      if [[ $is_synth -eq 0 ]]; then
+        for field in '\*\*Wind' '\*\*Anchor' '\*\*Rocks' '\*\*Next'; do
+          if ! echo "$body" | grep -qE "$field"; then
+            echo "WARN: $f line $ln: missing body field matching $field" >&2
+          fi
+        done
+      else
+        local synth_body_line
+        synth_body_line=$(echo "$body" | grep -v '^> ' | grep -v '^## ' | grep -v '^[[:space:]]*$' | head -1 || true)
+        if [[ -z "$synth_body_line" ]]; then
+          echo "WARN: SYNTHESIZED entry has no body content: $head" >&2
+        fi
+      fi
+      if [[ "$(heading_tags "$head")" == "[untagged]" ]]; then
+        echo "  WARN: $f line $ln: heading has no tags: $head"
+      fi
+    done
+    return $errors
+  }
+
+  local total_errors=0
+  if [[ -n "$file" ]]; then
+    _validate_single "$file" || (( total_errors++ )) || true
+  else
     case "$location" in
       local)
-        file=$(_local_file)
-        [[ -z "$file" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; file="$GLOBAL_FILE"; }
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        _validate_single "$lf" || (( total_errors++ )) || true
         ;;
-      *) file="$GLOBAL_FILE" ;;
+      both)
+        local lf; lf=$(_local_file)
+        _validate_single "$GLOBAL_FILE" || (( total_errors++ )) || true
+        if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
+          _validate_single "$lf" || (( total_errors++ )) || true
+        fi
+        ;;
+      *) # global
+        _validate_single "$GLOBAL_FILE" || (( total_errors++ )) || true
+        ;;
     esac
   fi
-  parse_entries "$file"
-  local errors=0 i
-  for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do
-    local body="${ENTRY_BODIES[$i]}" head="${ENTRY_HEADS[$i]}" ln="${ENTRY_LINES[$i]}"
-    local is_synth=0
-    [[ "$head" =~ ^##[[:space:]]+SYNTHESIZED ]] && is_synth=1
-
-    # Check Trigger/Action/Scope lines
-    if ! echo "$body" | grep -q '> Trigger:'; then
-      echo "ERROR: entry at line $ln: missing '> Trigger:'" >&2; (( errors++ )) || true
-    fi
-    if ! echo "$body" | grep -q '> Action:'; then
-      echo "ERROR: entry at line $ln: missing '> Action:'" >&2; (( errors++ )) || true
-    fi
-    if ! echo "$body" | grep -q '> Scope:'; then
-      echo "ERROR: entry at line $ln: missing '> Scope:'" >&2; (( errors++ )) || true
-    fi
-
-    if [[ $is_synth -eq 0 ]]; then
-      for field in '\*\*Wind' '\*\*Anchor' '\*\*Rocks' '\*\*Next'; do
-        if ! echo "$body" | grep -qE "$field"; then
-          echo "WARN: entry at line $ln: missing body field matching $field" >&2
-        fi
-      done
-    else
-      local synth_body_line
-      synth_body_line=$(echo "$body" | grep -v '^> ' | grep -v '^## ' | grep -v '^[[:space:]]*$' | head -1 || true)
-      if [[ -z "$synth_body_line" ]]; then
-        echo "WARN: SYNTHESIZED entry has no body content: $head" >&2
-      fi
-    fi
-
-    if [[ "$(heading_tags "$head")" == "[untagged]" ]]; then
-      echo "  WARN: heading has no tags: $head"
-      warnings=$((warnings + 1)) 2>/dev/null || true
-    fi
-  done
-  [[ $errors -gt 0 ]] && exit 1 || exit 0
+  [[ $total_errors -gt 0 ]] && exit 1 || exit 0
 }
 
 # ── retrieve ─────────────────────────────────────────────────────────────────
@@ -324,6 +346,11 @@ _inject_from_file() {
     else
       bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
     fi
+    # Check total count against global 5-bullet limit before adding
+    local total_bullets
+    total_bullets=$(printf '%s' "$INJECT_OUTPUT$output" | grep -c '^- \*\*\[' || true)
+    if [[ $total_bullets -ge 5 ]]; then break; fi
+
     local est; est=$(token_est "$INJECT_OUTPUT$output$bullet")
     [[ $est -gt $budget ]] && break
     output+="$bullet"$'\n'
@@ -332,7 +359,6 @@ _inject_from_file() {
 
   INJECT_OUTPUT+="$output"
 }
-
 cmd_inject() {
   local budget=500 file="" tag_arg="general" location="global"
   while [[ $# -gt 0 ]]; do
@@ -360,9 +386,14 @@ cmd_inject() {
       both)
         local lf; lf=$(_local_file)
         if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
-          # Split budget evenly; label each source
-          _inject_from_file "$(( budget / 2 ))" "$GLOBAL_FILE" "global"
-          _inject_from_file "$(( budget / 2 ))" "$lf" "project"
+          # Use shared budget across both sources; label each
+          _inject_from_file "$budget" "$GLOBAL_FILE" "global"
+          _inject_from_file "$budget" "$lf" "project"
+          # Trim to global max of 5 bullets across both sources
+          local lines_out; lines_out=$(printf '%s' "$INJECT_OUTPUT" | grep -c '^- \*\*\[' || true)
+          if [[ $lines_out -gt 5 ]]; then
+            INJECT_OUTPUT=$(printf '%s' "$INJECT_OUTPUT" | grep '^- \*\*\[' | head -5 | sed 's/$/\n/' | tr -d '\n'; echo)
+          fi
         else
           _inject_from_file "$budget" "$GLOBAL_FILE" ""
         fi
@@ -387,24 +418,42 @@ cmd_count() {
     case "$1" in
       --global)  location="global"; shift ;;
       --local)   location="local";  shift ;;
+      --both)    location="both";   shift ;;  # prints global+local counts
       *)         file="$1";        shift ;;
     esac
   done
-  if [[ -z "$file" ]]; then
+  _count_single() {
+    local f="$1"
+    if [[ ! -f "$f" && "$f" != "-" ]]; then echo 0; return; fi
+    local content; content=$(_read_input "$f")
+    [[ -z "$content" ]] && { echo 0; return; }
+    echo "$content" | grep -cE '^## ([0-9]{4}-[0-9]{2}-[0-9]{2}|SYNTHESIZED)' || true
+  }
+  if [[ -n "$file" ]]; then
+    _count_single "$file"
+  else
     case "$location" in
       local)
-        file=$(_local_file)
-        [[ -z "$file" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; file="$GLOBAL_FILE"; }
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        _count_single "$lf"
         ;;
-      *) file="$GLOBAL_FILE" ;;
+      both)
+        local lf; lf=$(_local_file)
+        local g_count; g_count=$(_count_single "$GLOBAL_FILE")
+        printf 'global: %s\n' "$g_count"
+        if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
+          local l_count; l_count=$(_count_single "$lf")
+          printf 'local:  %s\n' "$l_count"
+        else
+          printf 'local:  (same as global)\n'
+        fi
+        ;;
+      *) # global
+        _count_single "$GLOBAL_FILE"
+        ;;
     esac
   fi
-  if [[ ! -f "$file" && "$file" != "-" ]]; then echo 0; exit 0; fi
-  local content; content=$(_read_input "$file")
-  [[ -z "$content" ]] && { echo 0; exit 0; }
-  local n
-  n=$(echo "$content" | grep -cE '^## ([0-9]{4}-[0-9]{2}-[0-9]{2}|SYNTHESIZED)' || true)
-  echo "$n"
 }
 
 # ── migrate ──────────────────────────────────────────────────────────────────

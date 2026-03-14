@@ -33,7 +33,9 @@ When ALL items in your task/todo list reach a terminal state (every item is eith
 
 When you mark the last task as "completed", also create the sentinel file:
 
-    echo "tasks completed" > ~/.agents/.retro-pending
+    # Compute a short hash of the repo root path for collision safety
+    _retro_hash=$(git rev-parse --show-toplevel 2>/dev/null | md5sum 2>/dev/null | cut -c1-8 || echo 'global')
+    echo "tasks completed" > ~/.agents/.retro-pending-${_retro_hash}
 
 This allows the Stop hook (`.claude/hooks/stop-retro-check.sh`) to re-trigger you
 even if the context-window instruction is missed during long sessions.
