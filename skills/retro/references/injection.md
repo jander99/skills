@@ -117,19 +117,23 @@ When context window is near-full, agents MAY skip injection entirely (edge case:
 Use the `inject` subcommand:
 
 ```bash
-bash skills/retro/scripts/retro-lessons.sh inject [--budget <tokens>] [file]
+bash skills/retro/scripts/retro-lessons.sh inject [--budget <tokens>] [--global|--local|--both] [file]
 ```
 
-This formats up to 5 recent entries from LESSONS.md directly into a ready-to-paste block.
+Use `--both` to merge lessons from both global and project-local files (interleaved, capped at 5):
+
+```bash
+bash skills/retro/scripts/retro-lessons.sh inject --both
+```
 
 For targeted pre-risk injection, retrieve first then format manually, or use:
 
 ```bash
-bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-push | \
+bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-push --both | \
   bash skills/retro/scripts/retro-lessons.sh inject --tag git-push --budget 300 -
 ```
 
-Default file: `~/.agents/lessons/LESSONS.md`
+Default files: `~/.agents/lessons/LESSONS.md` (global) and `<repo>/.agents/lessons/LESSONS.md` (project-local)
 
 ## Where Injection Fits in the Workflow
 

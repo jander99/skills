@@ -147,7 +147,11 @@ After migration, run:
 
 ```bash
 retro-lessons.sh validate ~/.agents/lessons/LESSONS.md
+
+# Or validate both global and project-local at once:
+retro-lessons.sh validate --both
 ```
 
 - **Exit 0**: all entries have v2 headers — migration complete.
 - **Exit 1**: warnings printed to stderr listing entries still missing `> Trigger:`, `> Action:`, or `> Scope:`.
+- **OK message** (stderr): if file not found, reports `OK: <path> not found (no entries — skipping)`.

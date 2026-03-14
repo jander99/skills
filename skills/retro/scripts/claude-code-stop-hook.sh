@@ -55,15 +55,33 @@
 #   writes the last "completed" task.  The AGENTS.md (or CLAUDE.md) instruction
 #   (see retro-agents-md-snippet.md) tells the agent to do this.
 #
-#   Sentinel file path:  .claude/.retro-pending
+#   Sentinel file path:  ~/.agents/.retro-pending-<repo-hash>  (global, namespaced per repo)
 #   The file may contain optional context (task count, session summary).
-#
+#   Using a namespaced global sentinel avoids project-root pollution and prevents
+#   collision across concurrent Claude Code sessions in different repos.
 # =============================================================================
 
 set -euo pipefail
 
-SENTINEL=".claude/.retro-pending"
+# Sentinel is namespaced by git repo root hash to avoid collision across concurrent sessions.
+# Falls back to a simple global sentinel when not in a git repo.
+_sentinel_path() {
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "$repo_root" ]]; then
+    # Use a hash of the repo root path as a unique namespace
+    local repo_hash
+    repo_hash=$(printf '%s' "$repo_root" | md5sum 2>/dev/null | cut -c1-8 || printf '%s' "$repo_root" | cksum | awk '{print $1}')
+    echo "${HOME}/.agents/.retro-pending-${repo_hash}"
+  else
+    echo "${HOME}/.agents/.retro-pending"
+  fi
+}
 
+SENTINEL=$(_sentinel_path)
+
+# Ensure the directory exists
+mkdir -p "${HOME}/.agents"
 if [[ -f "$SENTINEL" ]]; then
   # Read optional context from sentinel (e.g. task summary written by agent)
   CONTEXT=""

@@ -11,11 +11,11 @@ metadata:
 
 ## Quick Start
 
-**Prerequisites:** Write access to `~/.agents/lessons/` (create if absent). Git configured.
+**Prerequisites:** Write access to `~/.agents/lessons/` (global) and optionally `<git-repo-root>/.agents/lessons/` (project-local). Git configured.
 
 **When to run:** At session end · when asked to "reflect", "debrief", "post-mortem", or "write lessons" · auto-triggered when all todos complete.
 
-**Output file:** `~/.agents/lessons/LESSONS.md` (universal, cross-tool).
+**Output file:** `~/.agents/lessons/LESSONS.md` (global) or `<git-repo-root>/.agents/lessons/LESSONS.md` (project-local) — classified at write time. Use `retro-lessons.sh paths` to see resolved paths.
 
 **Tools needed:** Read, Write, Bash · `session_read` (OpenCode only) · `retro-lessons.sh` (parser/retrieval)
 
@@ -24,7 +24,7 @@ metadata:
 ## What I Do
 
 - Run structured self-assessments using the Sailboat+Forward rubric (Wind / Anchor / Rocks / Next)
-- Write v2 LESSONS.md entries with Trigger/Action/Scope retrieval headers
+- Classify lessons as global (cross-project) or project-local (language/framework/repo-specific) and write to the correct file
 - Retrieve and inject relevant past lessons before high-risk operations (the retrieve-verify loop)
 - Audit whether injected lessons were Applied, Violated, or Irrelevant
 - Compact LESSONS.md when it exceeds 20 entries; promote 3+ occurrence patterns to AGENTS.md
@@ -38,9 +38,14 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 
 1. **Reflect** — assess the session via `session_read` transcript (OpenCode) or context-window reconstruction (all other tools). Identify correction loops, tool failures, and user redirects. Ask the human up to 3 targeted questions before writing. See [references/session-read.md](references/session-read.md).
 
-2. **Store** — append a v2 entry to `~/.agents/lessons/LESSONS.md`, increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
+2. **Store** — classify the lesson as **global** or **project-local** (see classification rules below), then append a v2 entry to the correct `LESSONS.md`. Increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
 
-3. **Retrieve** — at session start, run `retro-lessons.sh retrieve --recent 5`. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --operation <op>`. See [references/retrieval.md](references/retrieval.md).
+   **Classification rules:**
+   - **Global** → `~/.agents/lessons/LESSONS.md`: tool-agnostic lessons, workflow habits, communication patterns, cross-project debugging approaches, general engineering principles.
+   - **Project-local** → `<git-repo-root>/.agents/lessons/LESSONS.md`: lessons tied to the project's language/framework (ruff/poetry, Maven, npm scripts), project-specific file paths, repo conventions, or any lesson whose Scope contains a project-specific path glob.
+   - **Fallback**: if not inside a git repository, always write to `~/.agents/lessons/LESSONS.md`.
+
+3. **Retrieve** — at session start, run `retro-lessons.sh inject --both` to pull top lessons from both global and project-local files. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --both --operation <op>`. See [references/retrieval.md](references/retrieval.md).
 
 4. **Inject** — format retrieved lessons into a compact `## Relevant Lessons` block (≤500 tokens, ≤5 bullets) and place in context before acting. Each bullet: `- **[tag]**: Action (Trigger: trigger)`. See [references/injection.md](references/injection.md).
 
@@ -74,14 +79,15 @@ Full validation rules and examples → [references/schema.md](references/schema.
 `skills/retro/scripts/retro-lessons.sh` — subcommands:
 
 ```bash
-retro-lessons.sh inject                        # session-start: top 5 lessons → ## Relevant Lessons block
-retro-lessons.sh retrieve --operation git-push # pre-risk: targeted retrieval by op type
-retro-lessons.sh retrieve --tag planning       # retrieve by tag
-  retro-lessons.sh validate                      # check LESSONS.md file health
+retro-lessons.sh inject --both                 # session-start: merge top lessons from global + project
+retro-lessons.sh retrieve --both --operation git-push  # pre-risk: from both files
+retro-lessons.sh retrieve --local --tag python  # project-specific tag search
+retro-lessons.sh validate                      # check LESSONS.md file health
 retro-lessons.sh count                         # show entry count
+retro-lessons.sh paths                         # show resolved global and local paths
 ```
 
-Default file: `~/.agents/lessons/LESSONS.md`. Pass a path as the last argument to override.
+Default file: `~/.agents/lessons/LESSONS.md`. Pass `--local` (project-local), `--global` (default), or `--both` (merge from both files). Use `paths` subcommand to inspect resolved paths.
 
 ---
 
@@ -112,7 +118,7 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 | [references/migration.md](references/migration.md) | v1-to-v2 migration guide |
 | [references/session-read.md](references/session-read.md) | `session_read` usage in OpenCode, graceful degradation |
 | [references/auto-trigger.md](references/auto-trigger.md) | Hook setup for OpenCode, Claude Code, Cline; AGENTS.md snippet |
-| [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate subcommands |
+| [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate, paths subcommands; `--global`/`--local`/`--both` flags |
 
 ---
 
@@ -120,7 +126,7 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 
 | Error | Fix |
 |-------|-----|
-| Wrong LESSONS.md path | Check `~/.agents/` exists; it takes priority over all tool-specific paths |
+| Wrong LESSONS.md path | Run `retro-lessons.sh paths` to see resolved global and local paths |
 | v1 entry (no Trigger/Action/Scope) | Run `retro-lessons.sh migrate` to upgrade to v2 format |
 | Token budget exceeded at injection | Trim to ≤5 bullets; oldest entries trimmed first |
 | Compaction triggered but <20 entries | Check `<!-- retro:entries:N -->` counter — may be miscounted; use `retro-lessons.sh count` |
