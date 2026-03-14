@@ -1,4 +1,0 @@
-ERROR: entry at line 21: missing '> Trigger:'
-ERROR: entry at line 21: missing '> Action:'
-ERROR: entry at line 21: missing '> Scope:'
-exit: 1
