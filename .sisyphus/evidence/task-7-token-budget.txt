@@ -1,5 +1,0 @@
-Token budget: PASS (≤1800)
-Body starts at line: 11
-Words: 827
-Estimated tokens (words × 1.3): 1075
-Limit: 1800

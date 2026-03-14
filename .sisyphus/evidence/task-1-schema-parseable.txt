@@ -1,8 +1,0 @@
-Manual parseability verification for skills/retro/references/schema.md
-
-Checked examples:
-1) Example A (lines 95-103): heading -> Trigger -> Action -> Scope -> Sailboat body fields in required order.
-2) Example B (lines 108-114): SYNTHESIZED heading -> Trigger -> Action -> Scope -> synthesis text body.
-3) Example C (lines 119-127): heading -> Trigger -> Action -> Scope -> Sailboat body fields in required order.
-
-Result: PASS. All 3 required examples follow the specified parseable sequence.

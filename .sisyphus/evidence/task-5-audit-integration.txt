@@ -1,8 +1,0 @@
-=== Task 5: audit integration ===
-Audit happens **during retrospective writing**, after the Sailboat rubric (Wind/Anchor/Rocks/Next) is complete. It is not a separate step — it is appended to every retro entry that had active injected lessons.
-After writing the Anchor items in the Sailboat rubric, ask:
-Audit happens **during retrospective writing**, after the Sailboat rubric (Wind/Anchor/Rocks/Next) is complete. It is not a separate step — it is appended to every retro entry that had active injected lessons.
-Append an `> Audit:` block to the retro entry, after `**Next 🧭:**`, before the next `---` separator.
-### Full Entry Example (with audit appended)
-replace_refs: 0
-=== PASS ===
