@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js
+node_modules/
+
+# OpenCode
+.opencode/
+
+# Sisyphus agent runtime state
+.sisyphus/
