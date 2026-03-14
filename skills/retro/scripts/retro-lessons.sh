@@ -1,14 +1,38 @@
 #!/usr/bin/env bash
 # retro-lessons.sh — Validate/retrieve/inject LESSONS.md (v2 schema).
+# Supports dual-location: global (~/.agents/lessons/) and project-local (<repo>/.agents/lessons/).
 # Pure bash + standard unix tools only. No jq/python/node/curl.
 set -euo pipefail
-DEFAULT_FILE="${HOME}/.agents/lessons/LESSONS.md"
 
+GLOBAL_FILE="${HOME}/.agents/lessons/LESSONS.md"
+DEFAULT_FILE="$GLOBAL_FILE"
+
+# ── path detection ────────────────────────────────────────────────────────────
+
+# Find the git repository root from the current directory.
+# Returns empty string if not in a git repo.
+_git_root() {
+  git rev-parse --show-toplevel 2>/dev/null || true
+}
+
+# Return the project-local lessons file path (or empty if not in a git repo).
+_local_file() {
+  local root
+  root=$(_git_root)
+  if [[ -n "$root" ]]; then
+    echo "${root}/.agents/lessons/LESSONS.md"
+  fi
+}
 usage() {
   cat <<'EOF'
 Usage: retro-lessons.sh <subcommand> [options] [FILE]
 
 Default FILE: ~/.agents/lessons/LESSONS.md  (use - for stdin)
+
+Location flags (applicable to retrieve, inject, count, validate):
+  --global          Use ~/.agents/lessons/LESSONS.md (default)
+  --local           Use <git-repo-root>/.agents/lessons/LESSONS.md
+  --both            Operate across both files (inject/retrieve merge results)
 
 Subcommands:
   validate [FILE]            Validate all v2 entry blocks; exit 1 if any bad
@@ -21,6 +45,7 @@ Subcommands:
   inject [--budget N] [FILE] Print top-5 lessons formatted for prompt context
   count [FILE]               Print number of v2 entries
   migrate [--dry-run] [FILE] Upgrade v1 entries to v2 by injecting placeholder headers
+  paths                      Show resolved global and local lesson file paths
   --help                     Show this help and exit
 EOF
   exit 0
@@ -76,18 +101,43 @@ token_est() {
   echo $(( (words * 13) / 10 ))
 }
 
+# ── paths subcommand ──────────────────────────────────────────────────────────
+
+cmd_paths() {
+  local local_file
+  local_file=$(_local_file)
+  echo "Global : $GLOBAL_FILE"
+  if [[ -n "$local_file" ]]; then
+    echo "Local  : $local_file"
+    if [[ "$local_file" == "$GLOBAL_FILE" ]]; then
+      echo "Note   : local and global paths are the same (git root = home?)"
+    fi
+  else
+    echo "Local  : (not in a git repository)"
+  fi
+}
+
 # ── validate ─────────────────────────────────────────────────────────────────
 
 cmd_validate() {
-  local file="${1:-$DEFAULT_FILE}"
-  if [[ ! -f "$file" && "$file" != "-" ]]; then
-    mkdir -p "$(dirname "$file")"
-    printf '<!-- retro:entries:0 -->\n' > "$file"
-    exit 0
+  local file="" location="global"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --global)  location="global"; shift ;;
+      --local)   location="local";  shift ;;
+      --both)    location="both";   shift ;;
+      *)         file="$1";        shift ;;
+    esac
+  done
+  if [[ -z "$file" ]]; then
+    case "$location" in
+      local)
+        file=$(_local_file)
+        [[ -z "$file" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; file="$GLOBAL_FILE"; }
+        ;;
+      *) file="$GLOBAL_FILE" ;;
+    esac
   fi
-  local content; content=$(_read_input "$file")
-  [[ -z "$content" ]] && exit 0
-
   parse_entries "$file"
   local errors=0 i
   for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do
@@ -130,22 +180,13 @@ cmd_validate() {
 
 # ── retrieve ─────────────────────────────────────────────────────────────────
 
-cmd_retrieve() {
-  local tag="" scope="" operation="" recent=0 full=0 file="$DEFAULT_FILE"
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --tag)      [[ $# -lt 2 ]] && { echo "ERROR: --tag requires a value" >&2; exit 1; }; tag="$2";       shift 2 ;;
-      --scope)    [[ $# -lt 2 ]] && { echo "ERROR: --scope requires a value" >&2; exit 1; }; scope="$2";     shift 2 ;;
-      --operation) [[ $# -lt 2 ]] && { echo "ERROR: --operation requires a value" >&2; exit 1; }; operation="$2"; shift 2 ;;
-      --recent)   [[ $# -lt 2 ]] && { echo "ERROR: --recent requires a value" >&2; exit 1; }; recent="$2";    shift 2 ;;
-      --full)     full=1;         shift ;;
-      -*)         echo "WARN: unknown option $1" >&2; shift ;;
-      *)          file="$1";      shift ;;
-    esac
-  done
-  [[ ! -f "$file" && "$file" != "-" ]] && exit 0
+# Core retrieve logic for a single file. Prints matching entries.
+_retrieve_from_file() {
+  local tag="$1" scope="$2" operation="$3" recent="$4" full="$5" file="$6"
+
+  [[ ! -f "$file" && "$file" != "-" ]] && return
   parse_entries "$file"
-  [[ ${#ENTRY_HEADS[@]} -eq 0 ]] && exit 0
+  [[ ${#ENTRY_HEADS[@]} -eq 0 ]] && return
 
   local matches=() i
   for (( i=0; i<${#ENTRY_BODIES[@]}; i++ )); do
@@ -182,16 +223,16 @@ cmd_retrieve() {
     for (( i=start; i<${#matches[@]}; i++ )); do trimmed+=("${matches[$i]}"); done
     local rev=()
     for (( i=${#trimmed[@]}-1; i>=0; i-- )); do rev+=("${trimmed[$i]}"); done
-    matches=("${rev[@]+"${rev[@]}"}")
+    matches=("${rev[@]+"${rev[@]}"}")  
   else
     local rev=()
     for (( i=${#matches[@]}-1; i>=0; i-- )); do rev+=("${matches[$i]}"); done
-    matches=("${rev[@]+"${rev[@]}"}")
+    matches=("${rev[@]+"${rev[@]}"}")  
   fi
 
   local capped=()
   for (( i=0; i<${#matches[@]} && i<5; i++ )); do capped+=("${matches[$i]}"); done
-  matches=("${capped[@]+"${capped[@]}"}")
+  matches=("${capped[@]+"${capped[@]}"}")  
 
   local first=1
   for idx in "${matches[@]+"${matches[@]}"}"; do
@@ -206,22 +247,59 @@ cmd_retrieve() {
   done
 }
 
-# ── inject ───────────────────────────────────────────────────────────────────
-
-cmd_inject() {
-  local budget=500 file="$DEFAULT_FILE" tag_arg="general"
+cmd_retrieve() {
+  local tag="" scope="" operation="" recent=0 full=0 file="" location="global"
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --budget) budget="$2"; shift 2 ;;
-      --tag)    tag_arg="$2"; shift 2 ;;
-      *)        file="$1";   shift ;;
+      --tag)      [[ $# -lt 2 ]] && { echo "ERROR: --tag requires a value" >&2; exit 1; }; tag="$2";       shift 2 ;;
+      --scope)    [[ $# -lt 2 ]] && { echo "ERROR: --scope requires a value" >&2; exit 1; }; scope="$2";     shift 2 ;;
+      --operation) [[ $# -lt 2 ]] && { echo "ERROR: --operation requires a value" >&2; exit 1; }; operation="$2"; shift 2 ;;
+      --recent)   [[ $# -lt 2 ]] && { echo "ERROR: --recent requires a value" >&2; exit 1; }; recent="$2";    shift 2 ;;
+      --full)     full=1;           shift ;;
+      --global)   location="global"; shift ;;
+      --local)    location="local";  shift ;;
+      --both)     location="both";   shift ;;
+      -*)         echo "WARN: unknown option $1" >&2; shift ;;
+      *)          file="$1";        shift ;;
     esac
   done
-  [[ ! -f "$file" && "$file" != "-" ]] && exit 0
-  parse_entries "$file"
-  [[ ${#ENTRY_HEADS[@]} -eq 0 ]] && exit 0
 
-  local output="" used=0 count=0 i
+  # Resolve file(s) based on location flag (only when no explicit file given)
+  if [[ -n "$file" ]]; then
+    _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$file"
+  else
+    case "$location" in
+      local)
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$lf"
+        ;;
+      both)
+        local lf; lf=$(_local_file)
+        # Print from global first, then local (if different)
+        _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$GLOBAL_FILE"
+        if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
+          _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$lf"
+        fi
+        ;;
+      *) # global (default)
+        _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$GLOBAL_FILE"
+        ;;
+    esac
+  fi
+}
+
+# ── inject ───────────────────────────────────────────────────────────────────
+
+# Core inject logic for a single file. Appends bullets to INJECT_OUTPUT.
+_inject_from_file() {
+  local budget="$1" file="$2" label="$3"
+  local output="" count=0 i
+
+  [[ ! -f "$file" && "$file" != "-" ]] && return
+  parse_entries "$file"
+  [[ ${#ENTRY_HEADS[@]} -eq 0 ]] && return
+
   # newest first = reverse order
   for (( i=${#ENTRY_BODIES[@]}-1; i>=0 && count<5; i-- )); do
     local body="${ENTRY_BODIES[$i]}" head="${ENTRY_HEADS[$i]}"
@@ -238,26 +316,89 @@ cmd_inject() {
     if [[ ${#action} -gt 80 ]]; then
       action="${action:0:80}…"
     fi
-
     trigger="${trigger:0:80}"
 
-    local bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
-    local est; est=$(token_est "$output$bullet")
+    local bullet
+    if [[ -n "$label" ]]; then
+      bullet="- **[${first_tag}]** *(${label})*: ${action} (Trigger: ${trigger})"
+    else
+      bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
+    fi
+    local est; est=$(token_est "$INJECT_OUTPUT$output$bullet")
     [[ $est -gt $budget ]] && break
     output+="$bullet"$'\n'
-    (( used=est )) || true; (( count++ )) || true
+    (( count++ )) || true
   done
 
-  [[ -z "$output" ]] && exit 0
+  INJECT_OUTPUT+="$output"
+}
+
+cmd_inject() {
+  local budget=500 file="" tag_arg="general" location="global"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --budget)  budget="$2";       shift 2 ;;
+      --tag)     tag_arg="$2";      shift 2 ;;
+      --global)  location="global"; shift ;;
+      --local)   location="local";  shift ;;
+      --both)    location="both";   shift ;;
+      *)         file="$1";        shift ;;
+    esac
+  done
+
+  INJECT_OUTPUT=""
+
+  if [[ -n "$file" ]]; then
+    _inject_from_file "$budget" "$file" ""
+  else
+    case "$location" in
+      local)
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        _inject_from_file "$budget" "$lf" ""
+        ;;
+      both)
+        local lf; lf=$(_local_file)
+        if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
+          # Split budget evenly; label each source
+          _inject_from_file "$(( budget / 2 ))" "$GLOBAL_FILE" "global"
+          _inject_from_file "$(( budget / 2 ))" "$lf" "project"
+        else
+          _inject_from_file "$budget" "$GLOBAL_FILE" ""
+        fi
+        ;;
+      *) # global (default)
+        _inject_from_file "$budget" "$GLOBAL_FILE" ""
+        ;;
+    esac
+  fi
+
+  [[ -z "$INJECT_OUTPUT" ]] && exit 0
   printf '## Relevant Lessons\n'
   printf '<!-- lessons-injected: %s %s -->\n\n' "${tag_arg}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  printf '%s' "$output"
+  printf '%s' "$INJECT_OUTPUT"
 }
 
 # ── count ────────────────────────────────────────────────────────────────────
 
 cmd_count() {
-  local file="${1:-$DEFAULT_FILE}"
+  local file="" location="global"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --global)  location="global"; shift ;;
+      --local)   location="local";  shift ;;
+      *)         file="$1";        shift ;;
+    esac
+  done
+  if [[ -z "$file" ]]; then
+    case "$location" in
+      local)
+        file=$(_local_file)
+        [[ -z "$file" ]] && { echo "WARN: not in a git repository; falling back to global" >&2; file="$GLOBAL_FILE"; }
+        ;;
+      *) file="$GLOBAL_FILE" ;;
+    esac
+  fi
   if [[ ! -f "$file" && "$file" != "-" ]]; then echo 0; exit 0; fi
   local content; content=$(_read_input "$file")
   [[ -z "$content" ]] && { echo 0; exit 0; }
@@ -341,6 +482,9 @@ case "$subcmd" in
   retrieve)   cmd_retrieve "$@" ;;
   inject)     cmd_inject   "$@" ;;
   count)      cmd_count    "$@" ;;
+  inject)     cmd_inject   "$@" ;;
+  count)      cmd_count    "$@" ;;
   migrate)    cmd_migrate  "$@" ;;
+  paths)      cmd_paths    "$@" ;;
   *)          echo "Unknown subcommand: $subcmd" >&2; usage ;;
 esac

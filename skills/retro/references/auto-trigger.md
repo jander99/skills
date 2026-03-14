@@ -11,7 +11,6 @@ For tools with native hooks (OpenCode, Claude Code, Cline), use the hook scripts
 
 ## Section to add to AGENTS.md / CLAUDE.md / .cursorrules
 
-```markdown
 ## Auto-Retro Rule
 
 When ALL items in your task/todo list reach a terminal state (every item is either
@@ -19,14 +18,22 @@ When ALL items in your task/todo list reach a terminal state (every item is eith
 
 1. **Do not stop immediately.**
 2. Run the `retro` skill: load `@skills/retro/SKILL.md` and follow its instructions.
-3. Write the retrospective entry to the path resolved by the retro skill (`~/.agents/lessons/LESSONS.md` if `~/.agents/` exists, otherwise `LESSONS.md` in the project root).
-4. Only stop after the retro entry has been written.
+3. **Classify each lesson** as **global** (cross-project, transferable) or **project-local** (specific to this codebase, language, or toolchain).
+4. **Write the retrospective entry** to the appropriate path:
+   - **Global** → `~/.agents/lessons/LESSONS.md` (create `~/.agents/lessons/` if absent)
+   - **Project-local** → `<git-repo-root>/.agents/lessons/LESSONS.md` (create `.agents/lessons/` at repo root if absent)
+   - **Fallback** (not in a git repo) → `~/.agents/lessons/LESSONS.md`
+5. Only stop after the retro entry has been written.
+
+**Classification heuristics:**
+- **Global**: lessons about tool usage, workflow habits, communication patterns, general debugging approaches
+- **Project-local**: lessons tied to the project's language/framework (e.g. ruff/poetry for Python, Maven for Java), project conventions, domain-specific rules, repo-specific paths/scripts
 
 ### For Claude Code only — sentinel file
 
 When you mark the last task as "completed", also create the sentinel file:
 
-    echo "tasks completed" > .claude/.retro-pending
+    echo "tasks completed" > ~/.agents/.retro-pending
 
 This allows the Stop hook (`.claude/hooks/stop-retro-check.sh`) to re-trigger you
 even if the context-window instruction is missed during long sessions.
@@ -39,9 +46,12 @@ Use the Sailboat+Forward schema:
 - **Rocks 🪨**: What risks or unknowns remain?
 - **Next 🧭**: One concrete action for the next session
 
-Append the entry to the resolved `LESSONS.md` path (see path detection above) with format:
+Append the entry to the resolved `LESSONS.md` path with format:
 
     ## YYYY-MM-DD HH:MM | <tag1> [<tag2>]
+    > Trigger: <when this lesson applies>
+    > Action: <what to do differently>
+    > Scope: <operation-type, file-path-glob, or general>
     **Wind 🌬️:** ...
     **Anchor ⚓:** ...
     **Rocks 🪨:** ...

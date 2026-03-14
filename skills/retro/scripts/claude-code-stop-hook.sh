@@ -55,14 +55,17 @@
 #   writes the last "completed" task.  The AGENTS.md (or CLAUDE.md) instruction
 #   (see retro-agents-md-snippet.md) tells the agent to do this.
 #
-#   Sentinel file path:  .claude/.retro-pending
+#   Sentinel file path:  ~/.agents/.retro-pending  (global, not project-local)
 #   The file may contain optional context (task count, session summary).
-#
+#   Using a global sentinel avoids polluting project roots with .claude/ directories.
 # =============================================================================
 
 set -euo pipefail
 
-SENTINEL=".claude/.retro-pending"
+SENTINEL="${HOME}/.agents/.retro-pending"
+
+# Ensure the directory exists
+mkdir -p "${HOME}/.agents"
 
 if [[ -f "$SENTINEL" ]]; then
   # Read optional context from sentinel (e.g. task summary written by agent)
