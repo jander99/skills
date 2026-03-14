@@ -134,8 +134,7 @@ cmd_validate() {
   _validate_single() {
     local f="$1"
     if [[ ! -f "$f" && "$f" != "-" ]]; then
-      mkdir -p "$(dirname "$f")"
-      printf '<!-- retro:entries:0 -->\n' > "$f"
+      echo "OK: $f not found (no entries — skipping)" >&2
       return 0
     fi
     local content; content=$(_read_input "$f")
@@ -298,10 +297,20 @@ cmd_retrieve() {
         ;;
       both)
         local lf; lf=$(_local_file)
-        # Print from global first, then local (if different)
-        _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$GLOBAL_FILE"
+        # Print from global first (labeled), then local (labeled, if different)
+        _retrieve_from_file_labeled() {
+          local _src_label="$1" _tag="$2" _scope="$3" _op="$4" _recent="$5" _full="$6" _file="$7"
+          local _buf
+          # Capture output of inner retrieve, then prefix each heading line with source label
+          _buf=$(_retrieve_from_file "$_tag" "$_scope" "$_op" "$_recent" "$_full" "$_file" 2>/dev/null || true)
+          if [[ -n "$_buf" ]]; then
+            # Annotate each ## heading line with the source label
+            echo "$_buf" | sed "s|^\(## \)|\1[${_src_label}] |"
+          fi
+        }
+        _retrieve_from_file_labeled "global" "$tag" "$scope" "$operation" "$recent" "$full" "$GLOBAL_FILE"
         if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
-          _retrieve_from_file "$tag" "$scope" "$operation" "$recent" "$full" "$lf"
+          _retrieve_from_file_labeled "project" "$tag" "$scope" "$operation" "$recent" "$full" "$lf"
         fi
         ;;
       *) # global (default)
@@ -315,7 +324,7 @@ cmd_retrieve() {
 
 # Core inject logic for a single file. Appends bullets to INJECT_OUTPUT.
 _inject_from_file() {
-  local budget="$1" file="$2" label="$3"
+  local budget="$1" file="$2" label="$3" max_bullets="${4:-5}"
   local output="" count=0 i
 
   [[ ! -f "$file" && "$file" != "-" ]] && return
@@ -323,7 +332,7 @@ _inject_from_file() {
   [[ ${#ENTRY_HEADS[@]} -eq 0 ]] && return
 
   # newest first = reverse order
-  for (( i=${#ENTRY_BODIES[@]}-1; i>=0 && count<5; i-- )); do
+  for (( i=${#ENTRY_BODIES[@]}-1; i>=0 && count<max_bullets; i-- )); do
     local body="${ENTRY_BODIES[$i]}" head="${ENTRY_HEADS[$i]}"
     local trigger action
     trigger=$(echo "$body" | grep '> Trigger:' | head -1 | sed 's/> Trigger:[[:space:]]*//' || true)
@@ -346,10 +355,8 @@ _inject_from_file() {
     else
       bullet="- **[${first_tag}]**: ${action} (Trigger: ${trigger})"
     fi
-    # Check total count against global 5-bullet limit before adding
-    local total_bullets
-    total_bullets=$(printf '%s' "$INJECT_OUTPUT$output" | grep -c '^- \*\*\[' || true)
-    if [[ $total_bullets -ge 5 ]]; then break; fi
+    # Check per-source bullet cap (uses local count only, not INJECT_OUTPUT)
+    if [[ $count -ge $max_bullets ]]; then break; fi
 
     local est; est=$(token_est "$INJECT_OUTPUT$output$bullet")
     [[ $est -gt $budget ]] && break
@@ -386,16 +393,39 @@ cmd_inject() {
       both)
         local lf; lf=$(_local_file)
         if [[ -n "$lf" && "$lf" != "$GLOBAL_FILE" ]]; then
-          # Use shared budget across both sources; label each
-          _inject_from_file "$budget" "$GLOBAL_FILE" "global"
-          _inject_from_file "$budget" "$lf" "project"
-          # Trim to global max of 5 bullets across both sources
-          local lines_out; lines_out=$(printf '%s' "$INJECT_OUTPUT" | grep -c '^- \*\*\[' || true)
-          if [[ $lines_out -gt 5 ]]; then
-            INJECT_OUTPUT=$(printf '%s' "$INJECT_OUTPUT" | grep '^- \*\*\[' | head -5 | sed 's/$/\n/' | tr -d '\n'; echo)
-          fi
+          # True merged top-5: collect all bullets from both sources, newest-first, cap at 5
+          # Build temporary arrays: one pass global, one pass local
+          local _g_output="" _l_output=""
+          _inject_from_file "$budget" "$GLOBAL_FILE" "global" 99
+          _g_output="$INJECT_OUTPUT"
+          INJECT_OUTPUT=""
+          _inject_from_file "$budget" "$lf" "project" 99
+          _l_output="$INJECT_OUTPUT"
+          INJECT_OUTPUT=""
+          # Interleave: take bullets alternately from each source to ensure both surface,
+          # then cap the merged result at 5 bullets total.
+          local _merged="" _count=0
+          local _g_lines _l_lines _gi=0 _li=0
+          mapfile -t _g_lines <<< "$_g_output"
+          mapfile -t _l_lines <<< "$_l_output"
+          # Remove trailing empty element that mapfile adds
+          [[ ${#_g_lines[@]} -gt 0 && -z "${_g_lines[-1]}" ]] && unset '_g_lines[-1]'
+          [[ ${#_l_lines[@]} -gt 0 && -z "${_l_lines[-1]}" ]] && unset '_l_lines[-1]'
+          while [[ $_count -lt 5 && ( $_gi -lt ${#_g_lines[@]} || $_li -lt ${#_l_lines[@]} ) ]]; do
+            if [[ $_gi -lt ${#_g_lines[@]} && -n "${_g_lines[$_gi]}" ]]; then
+              _merged+="${_g_lines[$_gi]}"$'\n'
+              (( _gi++ )) || true
+              (( _count++ )) || true
+            fi
+            if [[ $_count -lt 5 && $_li -lt ${#_l_lines[@]} && -n "${_l_lines[$_li]}" ]]; then
+              _merged+="${_l_lines[$_li]}"$'\n'
+              (( _li++ )) || true
+              (( _count++ )) || true
+            fi
+          done
+          INJECT_OUTPUT="$_merged"
         else
-          _inject_from_file "$budget" "$GLOBAL_FILE" ""
+          _inject_from_file "$budget" "$GLOBAL_FILE" "" 5
         fi
         ;;
       *) # global (default)
@@ -529,8 +559,6 @@ case "$subcmd" in
   --help|-h)  usage ;;
   validate)   cmd_validate "$@" ;;
   retrieve)   cmd_retrieve "$@" ;;
-  inject)     cmd_inject   "$@" ;;
-  count)      cmd_count    "$@" ;;
   inject)     cmd_inject   "$@" ;;
   count)      cmd_count    "$@" ;;
   migrate)    cmd_migrate  "$@" ;;

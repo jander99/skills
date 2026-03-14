@@ -11,6 +11,7 @@ For tools with native hooks (OpenCode, Claude Code, Cline), use the hook scripts
 
 ## Section to add to AGENTS.md / CLAUDE.md / .cursorrules
 
+```markdown
 ## Auto-Retro Rule
 
 When ALL items in your task/todo list reach a terminal state (every item is either
@@ -34,7 +35,7 @@ When ALL items in your task/todo list reach a terminal state (every item is eith
 When you mark the last task as "completed", also create the sentinel file:
 
     # Compute a short hash of the repo root path for collision safety
-    _retro_hash=$(git rev-parse --show-toplevel 2>/dev/null | md5sum 2>/dev/null | cut -c1-8 || echo 'global')
+    _retro_hash=$(printf '%s' "$(git rev-parse --show-toplevel 2>/dev/null || true)" | md5sum 2>/dev/null | cut -c1-8 || printf '%s' "$(git rev-parse --show-toplevel 2>/dev/null || true)" | cksum | awk '{print $1}')
     echo "tasks completed" > ~/.agents/.retro-pending-${_retro_hash}
 
 This allows the Stop hook (`.claude/hooks/stop-retro-check.sh`) to re-trigger you

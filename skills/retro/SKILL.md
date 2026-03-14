@@ -86,11 +86,6 @@ retro-lessons.sh validate                      # check LESSONS.md file health
 retro-lessons.sh count                         # show entry count
 retro-lessons.sh paths                         # show resolved global and local paths
 ```
-retro-lessons.sh retrieve --operation git-push # pre-risk: targeted retrieval by op type
-retro-lessons.sh retrieve --tag planning       # retrieve by tag
-  retro-lessons.sh validate                      # check LESSONS.md file health
-retro-lessons.sh count                         # show entry count
-```
 
 Default file: `~/.agents/lessons/LESSONS.md`. Pass `--local` (project-local), `--global` (default), or `--both` (merge from both files). Use `paths` subcommand to inspect resolved paths.
 

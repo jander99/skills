@@ -55,9 +55,10 @@
 #   writes the last "completed" task.  The AGENTS.md (or CLAUDE.md) instruction
 #   (see retro-agents-md-snippet.md) tells the agent to do this.
 #
-#   Sentinel file path:  ~/.agents/.retro-pending  (global, not project-local)
+#   Sentinel file path:  ~/.agents/.retro-pending-<repo-hash>  (global, namespaced per repo)
 #   The file may contain optional context (task count, session summary).
-#   Using a global sentinel avoids polluting project roots with .claude/ directories.
+#   Using a namespaced global sentinel avoids project-root pollution and prevents
+#   collision across concurrent Claude Code sessions in different repos.
 # =============================================================================
 
 set -euo pipefail

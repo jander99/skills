@@ -15,7 +15,7 @@ At the start of a new agent session, retrieve the 5 most recent general lessons 
 **Command:**
 
 ```bash
-bash skills/retro/scripts/retro-lessons.sh retrieve --recent 5
+bash skills/retro/scripts/retro-lessons.sh retrieve --recent 5 --both
 ```
 
 **Purpose:** Surfaces institutional knowledge the agent might not have loaded otherwise. Equivalent to a pre-flight checklist read at the start of a flight.
@@ -29,7 +29,7 @@ Before executing a high-risk operation, retrieve lessons specifically matching t
 **Command:**
 
 ```bash
-bash skills/retro/scripts/retro-lessons.sh retrieve --operation <op-type>
+bash skills/retro/scripts/retro-lessons.sh retrieve --operation <op-type> --both
 ```
 
 **Purpose:** Targeted recall of hard-won lessons exactly when they are actionable. This is decision-time guidance — the closer retrieval is to the decision, the higher the application rate.
@@ -82,7 +82,7 @@ See `references/compaction.md` for compaction policy.
 > Before committing, retrieve lessons for `git-commit`:
 >
 > ```bash
-> bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-commit
+> bash skills/retro/scripts/retro-lessons.sh retrieve --operation git-commit --both
 > ```
 
 ### Script subcommand reference
@@ -93,23 +93,30 @@ retrieve --scope <scope>      [file]   # entries matching scope exactly/glob
 retrieve --recent <N>         [file]   # N most recent entries
 retrieve --operation <op>     [file]   # entries matching operation scope
 retrieve --tag <tag> --recent <N>      # tag match, limited to N
+retrieve --global             # read from ~/.agents/lessons/LESSONS.md (default)
+retrieve --local              # read from <repo>/.agents/lessons/LESSONS.md
+retrieve --both               # read from both; source labeled in heading as [global] or [project]
 ```
 
-Default file: `~/.agents/lessons/LESSONS.md`
+Default files: `~/.agents/lessons/LESSONS.md` (global) and `<repo>/.agents/lessons/LESSONS.md` (project-local)
 
 ## Retrieval Output Format
 
 `retrieve` returns entries separated by `---`, each showing the heading and Trigger/Action/Scope lines:
 
 ```
-## 2026-03-06 12:00 | git-hygiene
+
+With `--both`, headings are annotated with the source:
+
+```
+## [global] 2026-03-06 12:00 | git-hygiene
 > Trigger: Before force-pushing to shared branches
 > Action: Verify no upstream consumers exist first
 > Scope: git-push
 ---
-## 2026-03-05 09:30 | git-hygiene tool-use
-> Trigger: Starting work in a multi-worktree repository
-> Action: Run git worktree list and confirm current branch
+## [project] 2026-03-05 09:30 | ruff python
+> Trigger: Before every commit in this Python project
+> Action: Run poetry run ruff format on changed files
 > Scope: git-commit
 ```
 
