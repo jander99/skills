@@ -23,6 +23,24 @@ _local_file() {
     echo "${root}/.agents/lessons/LESSONS.md"
   fi
 }
+
+# Return the absolute path of a file (no realpath dependency).
+_abs_path() {
+  local path="$1"
+  if [[ "$path" == /* ]]; then
+    echo "$path"
+  else
+    echo "$(pwd)/$path"
+  fi
+}
+
+# Find the git repo root for a given file path (not the CWD-based root).
+_git_root_for_file() {
+  local file="$1"
+  local dir
+  dir=$(dirname "$(_abs_path "$file")")
+  git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true
+}
 usage() {
   cat <<'EOF'
 Usage: retro-lessons.sh <subcommand> [options] [FILE]
@@ -46,6 +64,8 @@ Subcommands:
   count [FILE]               Print number of v2 entries
   migrate [--dry-run] [FILE] Upgrade v1 entries to v2 by injecting placeholder headers
   paths                      Show resolved global and local lesson file paths
+  checkpoint [--global|--local|FILE]  Commit dirty LESSONS.md before writing (concurrent-write safety)
+  finalize   [--global|--local|FILE] [--date YYYY-MM-DD]  Commit LESSONS.md after writing new entry
   --help                     Show this help and exit
 EOF
   exit 0
@@ -550,6 +570,92 @@ cmd_migrate() {
   fi
 }
 
+# ── checkpoint ───────────────────────────────────────────────────────────────
+# Before writing a new retro entry: commit any pre-existing uncommitted changes
+# to LESSONS.md so a concurrent worktree's write is not silently overwritten.
+
+cmd_checkpoint() {
+  local file=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --global) file="$GLOBAL_FILE"; shift ;;
+      --local)
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repo; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        file="$lf"; shift ;;
+      *) file="$1"; shift ;;
+    esac
+  done
+  [[ -z "$file" ]] && file="$GLOBAL_FILE"
+
+  local repo_root
+  repo_root=$(_git_root_for_file "$file")
+  if [[ -z "$repo_root" ]]; then
+    echo "INFO: $file is not tracked by git; no checkpoint needed" >&2
+    exit 0
+  fi
+
+  local abs_file rel_path
+  abs_file=$(_abs_path "$file")
+  rel_path="${abs_file#${repo_root}/}"
+
+  local dirty wt_name
+  dirty=$(git -C "$repo_root" status --porcelain -- "$rel_path" 2>/dev/null || true)
+  wt_name=$(basename "$PWD")
+  if [[ -n "$dirty" ]]; then
+    git -C "$repo_root" add -- "$rel_path"
+    if ! git -C "$repo_root" diff --cached --quiet -- "$rel_path" 2>/dev/null; then
+      git -C "$repo_root" commit -m "retro: checkpoint LESSONS.md before new entry [$wt_name]"
+      echo "Checkpointed: committed pre-existing uncommitted changes in $file" >&2
+    else
+      echo "INFO: $file staged but no diff to commit; skipping" >&2
+    fi
+  else
+    echo "No uncommitted changes in $file; no checkpoint needed" >&2
+  fi
+}
+
+# ── finalize ─────────────────────────────────────────────────────────────────
+# After writing a new retro entry: stage and commit LESSONS.md immediately
+# so concurrent worktrees see the new entry on their next checkpoint call.
+
+cmd_finalize() {
+  local file="" date_str
+  date_str=$(date +%Y-%m-%d)
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --global) file="$GLOBAL_FILE"; shift ;;
+      --local)
+        local lf; lf=$(_local_file)
+        [[ -z "$lf" ]] && { echo "WARN: not in a git repo; falling back to global" >&2; lf="$GLOBAL_FILE"; }
+        file="$lf"; shift ;;
+      --date) date_str="$2"; shift 2 ;;
+      *) file="$1"; shift ;;
+    esac
+  done
+  [[ -z "$file" ]] && file="$GLOBAL_FILE"
+
+  local repo_root
+  repo_root=$(_git_root_for_file "$file")
+  if [[ -z "$repo_root" ]]; then
+    echo "INFO: $file is not tracked by git; skipping finalize" >&2
+    exit 0
+  fi
+
+  local abs_file rel_path wt_name
+  abs_file=$(_abs_path "$file")
+  rel_path="${abs_file#${repo_root}/}"
+  wt_name=$(basename "$PWD")
+
+  git -C "$repo_root" add -- "$rel_path"
+  if ! git -C "$repo_root" diff --cached --quiet -- "$rel_path" 2>/dev/null; then
+    git -C "$repo_root" commit -m "retro: add entry $date_str [$wt_name]"
+    echo "Finalized: committed new retro entry in $file" >&2
+  else
+    echo "INFO: no staged changes in $file; nothing to finalize" >&2
+  fi
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────────
 
 [[ $# -eq 0 ]] && usage
@@ -563,5 +669,7 @@ case "$subcmd" in
   count)      cmd_count    "$@" ;;
   migrate)    cmd_migrate  "$@" ;;
   paths)      cmd_paths    "$@" ;;
+  checkpoint) cmd_checkpoint "$@" ;;
+  finalize)   cmd_finalize   "$@" ;;
   *)          echo "Unknown subcommand: $subcmd" >&2; usage ;;
 esac
