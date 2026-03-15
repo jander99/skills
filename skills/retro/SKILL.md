@@ -38,7 +38,7 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 
 1. **Reflect** — assess the session via `session_read` transcript (OpenCode) or context-window reconstruction (all other tools). Identify correction loops, tool failures, and user redirects. Ask the human up to 3 targeted questions before writing. See [references/session-read.md](references/session-read.md).
 
-2. **Store** — classify the lesson as **global** or **project-local** (see classification rules below), then append a v2 entry to the correct `LESSONS.md`. Increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
+2. **Store** — classify the lesson as **global** or **project-local** (see classification rules below), then append a v2 entry to the correct `LESSONS.md`. **Before writing, run the concurrent-write checkpoint; after writing, run finalize (see Concurrent-Write Safety below).** Increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
 
    **Classification rules:**
    - **Global** → `~/.agents/lessons/LESSONS.md`: tool-agnostic lessons, workflow habits, communication patterns, cross-project debugging approaches, general engineering principles.
@@ -50,6 +50,55 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 4. **Inject** — format retrieved lessons into a compact `## Relevant Lessons` block (≤500 tokens, ≤5 bullets) and place in context before acting. Each bullet: `- **[tag]**: Action (Trigger: trigger)`. See [references/injection.md](references/injection.md).
 
 5. **Verify** — after writing the Sailboat rubric, append an `> Audit:` block classifying each injected lesson as **Applied**, **Violated**, or **Irrelevant**. Violations generate a new reinforcing entry. See [references/audit.md](references/audit.md).
+
+---
+
+
+## Concurrent-Write Safety
+
+Multiple worktrees running retro simultaneously share the same `LESSONS.md` files. Without coordination the second writer **silently overwrites** the first's entry. Use `checkpoint` → write → `finalize` to prevent data loss.
+
+### The Problem
+
+`LESSONS.md` lives outside individual worktree directories. Two agents that simultaneously read the file, append a new entry, and save will clobber each other — the second `Write` call overwrites the entire file with a version that does not contain the first agent's entry.
+
+### Protocol: checkpoint → write → finalize
+
+**Step 1 — Checkpoint (before reading/writing):**
+```bash
+bash skills/retro/scripts/retro-lessons.sh checkpoint ~/.agents/lessons/LESSONS.md
+# or for project-local:
+bash skills/retro/scripts/retro-lessons.sh checkpoint --local
+```
+`checkpoint` detects uncommitted content left by a concurrent worktree and commits it. **Re-read the file after checkpoint** to get the latest state before appending.
+
+**Step 2 — Write:** Append your v2 entry as normal using the Write/Edit tool.
+
+**Step 3 — Finalize (immediately after writing):**
+```bash
+bash skills/retro/scripts/retro-lessons.sh finalize ~/.agents/lessons/LESSONS.md
+# or:
+bash skills/retro/scripts/retro-lessons.sh finalize --local
+```
+`finalize` stages and commits your entry immediately so any concurrent worktree that calls `checkpoint` next sees it.
+
+### Requirements
+
+- The directory containing `LESSONS.md` must be inside a git repository.
+- If it is **not** tracked by git, both commands emit `INFO:` and exit 0 — no protection is applied.
+  To enable protection for the global file:
+  ```bash
+  git init ~/.agents/lessons && git -C ~/.agents/lessons add LESSONS.md && git -C ~/.agents/lessons commit -m "init"
+  ```
+- Do **not** use `--no-verify` on these commits. If a hook rejects the commit, fix the failure before retrying.
+
+### Quick Reference
+
+| Situation | Action |
+|---|---|
+| `git status` shows `LESSONS.md` dirty before your write | Run `checkpoint`, then re-read the file, then append |
+| You just appended a new entry | Run `finalize` immediately |
+| LESSONS.md not in any git repo | No protection; write as normal — consider initializing git |
 
 ---
 
@@ -85,6 +134,8 @@ retro-lessons.sh retrieve --local --tag python  # project-specific tag search
 retro-lessons.sh validate                      # check LESSONS.md file health
 retro-lessons.sh count                         # show entry count
 retro-lessons.sh paths                         # show resolved global and local paths
+retro-lessons.sh checkpoint ~/.agents/lessons/LESSONS.md  # pre-write: commit any dirty state
+retro-lessons.sh finalize ~/.agents/lessons/LESSONS.md    # post-write: commit new entry
 ```
 
 Default file: `~/.agents/lessons/LESSONS.md`. Pass `--local` (project-local), `--global` (default), or `--both` (merge from both files). Use `paths` subcommand to inspect resolved paths.
@@ -119,6 +170,7 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 | [references/session-read.md](references/session-read.md) | `session_read` usage in OpenCode, graceful degradation |
 | [references/auto-trigger.md](references/auto-trigger.md) | Hook setup for OpenCode, Claude Code, Cline; AGENTS.md snippet |
 | [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate, paths subcommands; `--global`/`--local`/`--both` flags |
+| [Concurrent-Write Safety](#concurrent-write-safety) | `checkpoint`/`finalize` protocol to prevent concurrent-worktree data loss |
 
 ---
 
@@ -131,6 +183,7 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 | Token budget exceeded at injection | Trim to ≤5 bullets; oldest entries trimmed first |
 | Compaction triggered but <20 entries | Check `<!-- retro:entries:N -->` counter — may be miscounted; use `retro-lessons.sh count` |
 | Audit markers missing | Note `> Audit: no injection markers found; best-effort recall used.` |
+| LESSONS.md overwritten by concurrent worktree | Run `checkpoint` before reading; run `finalize` immediately after writing |
 
 ---
 
