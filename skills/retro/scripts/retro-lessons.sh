@@ -617,14 +617,24 @@ cmd_migrate_schema() {
   T_STOP_R=$(printf '**Stop \U1F6D1 (risks):**')
   T_START=$(printf '**Start \U1F680:**')
 
-  # Apply renames using awk (handles multi-byte chars reliably without sed locale issues)
+  # Apply renames using awk with index()-based fixed-string replacement.
+  # gsub() treats the pattern as a regex and interprets '**' as a quantifier,
+  # which leaves trailing '**' artifacts. index() does exact string matching.
   awk -v fw="$F_WIND" -v fa="$F_ANCHOR" -v fr="$F_ROCKS" -v fn="$F_NEXT" \
       -v tc="$T_CONTINUE" -v ts="$T_STOP" -v tsr="$T_STOP_R" -v tst="$T_START" '
+  function str_replace(s, from, to,    pos, flen, res) {
+    flen = length(from); res = ""
+    while ((pos = index(s, from)) > 0) {
+      res = res substr(s, 1, pos-1) to
+      s = substr(s, pos + flen)
+    }
+    return res s
+  }
   {
-    gsub(fw, tc)
-    gsub(fa, ts)
-    gsub(fr, tsr)
-    gsub(fn, tst)
+    $0 = str_replace($0, fw, tc)
+    $0 = str_replace($0, fa, ts)
+    $0 = str_replace($0, fr, tsr)
+    $0 = str_replace($0, fn, tst)
     print
   }' "$file" > "$tmp"
 
