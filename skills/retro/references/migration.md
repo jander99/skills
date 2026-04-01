@@ -3,13 +3,15 @@
 ## Overview
 
 **v1** entries use no machine-parseable headers — just a `## YYYY-MM-DD HH:MM | tags` heading
-followed directly by Sailboat fields (`**Wind 🌬️:**`, etc.).
+followed directly by body fields.
 
-**v2** inserts three blockquote header lines between the `##` heading and the Sailboat body:
+
+**v2** inserts three blockquote header lines between the `##` heading and the body:
 `> Trigger:`, `> Action:`, `> Scope:`.
 
-Migration is **non-destructive**: original Sailboat fields are preserved unchanged.
+Migration is **non-destructive**: original body fields are preserved unchanged.
 Automatic migration inserts placeholder headers; manual review fills them in with meaningful values.
+
 
 > **⚠️ Always backup before migrating:**
 > ```bash
@@ -155,3 +157,49 @@ retro-lessons.sh validate --both
 - **Exit 0**: all entries have v2 headers — migration complete.
 - **Exit 1**: warnings printed to stderr listing entries still missing `> Trigger:`, `> Action:`, or `> Scope:`.
 - **OK message** (stderr): if file not found, reports `OK: <path> not found (no entries — skipping)`.
+
+---
+
+## Sailboat → Start/Stop/Continue Schema Migration
+
+The current entry format uses **Start/Stop/Continue** fields. Older entries may use Sailboat
+fields (`**Wind 🌬️:**`, `**Anchor ⚓:**`, `**Rocks 🪨:**`, `**Next 🧭:**`).
+The validator warns on Sailboat format; entries still work but should be migrated.
+
+### Automatic Schema Migration
+
+```bash
+# Preview changes without writing:
+retro-lessons.sh migrate-schema --dry-run ~/.agents/lessons/LESSONS.md
+
+# Apply in-place:
+retro-lessons.sh migrate-schema ~/.agents/lessons/LESSONS.md
+```
+
+**What it does:** Renames body fields in-place:
+- `**Wind 🌬️:**` → `**Continue ✅:**`
+- `**Anchor ⚓:**` → `**Stop 🛑:**`
+- `**Rocks 🪨:**` → `**Stop 🛑 (risks):**`
+- `**Next 🧭:**` → `**Start 🚀:**`
+
+**After running:** Review the output. If both Anchor and Rocks existed, you will have two
+`**Stop 🛑:**` blocks. Manually merge them into a single one.
+
+### Field Mapping Rationale
+
+| Sailboat | Start/Stop/Continue | Why |
+|---|---|---|
+| Wind 🌬️ (what helped) | Continue ✅ | Both capture what should be maintained |
+| Anchor ⚓ (what went wrong) | Stop 🛑 | Both capture what should be eliminated |
+| Rocks 🪨 (risks/unknowns) | Stop 🛑 (risks) | Risks are also things to stop/address |
+| Next 🧭 (concrete action) | Start 🚀 | Both capture new practices to adopt |
+
+### Manual Schema Migration Guide
+
+For entries where the automatic migration is insufficient:
+
+1. **Start 🚀** ← Content from `**Next 🧭:**` (the concrete action to adopt)
+2. **Stop 🛑** ← Content from `**Anchor ⚓:**` + `**Rocks 🪨:**` merged (what to eliminate and risks)
+3. **Continue ✅** ← Content from `**Wind 🌬️:**` (what worked well)
+
+Merge the two Stop sources into a single coherent statement about what to stop or avoid.

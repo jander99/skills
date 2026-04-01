@@ -4,7 +4,7 @@ The audit is the verify step of the learning loop: **reflect → store → retri
 
 ## When to Audit
 
-Audit happens **during retrospective writing**, after the Sailboat rubric (Wind/Anchor/Rocks/Next) is complete. It is not a separate step — it is appended to every retro entry that had active injected lessons.
+Audit happens **during retrospective writing**, after the Start/Stop/Continue fields are written. It is not a separate step — it is appended to every retro entry that had active injected lessons.
 
 If no lessons were injected in the session, write: `> Audit: no lessons active this session.` and move on.
 
@@ -38,7 +38,7 @@ For each lesson identified in Phase 1, assign exactly one classification:
 
 ## Phase 3: Write the Audit Section
 
-Append an `> Audit:` block to the retro entry, after `**Next 🧭:**`, before the next `---` separator.
+Append an `> Audit:` block to the retro entry, after `**Continue ✅:**`, before the next `---` separator.
 
 ### Format
 
@@ -62,10 +62,9 @@ Rules:
 > Trigger: After any session that involved git operations
 > Action: Always confirm staging was clean before marking task done
 > Scope: git-commit
-**Wind 🌬️:** Caught a dirty working tree before committing.
-**Anchor ⚓:** Forgot to run tests before push.
-**Rocks 🪨:** CI might still have flaky tests.
-**Next 🧭:** Add test step to pre-push checklist.
+**Start 🚀:** Add test step to pre-push checklist.
+**Stop 🛑:** Forgot to run tests before push.
+**Continue ✅:** Caught a dirty working tree before committing.
 > Audit:
 > - [git-hygiene] Applied: ran git status before every commit this session (lesson 2026-03-05)
 > - [testing] Violated: skipped test run before push due to time pressure (lesson 2026-02-28)
@@ -85,9 +84,9 @@ This turns violations into higher-signal lessons, increasing their weight for fu
 
 ## Phase 5: The "Did I Miss a Lesson?" Self-Check
 
-After writing the Anchor items in the Sailboat rubric, ask:
+After writing the Stop items in the Start/Stop/Continue rubric, ask:
 
-> *Is there a lesson in LESSONS.md that would have prevented this Anchor?*
+> *Is there a lesson in LESSONS.md that would have prevented this Stop event?*
 
 Steps:
 1. Run `bash skills/retro/scripts/retro-lessons.sh retrieve --recent 10` or search by relevant tag.

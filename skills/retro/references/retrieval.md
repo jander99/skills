@@ -120,7 +120,7 @@ With `--both`, headings are annotated with the source:
 > Scope: git-commit
 ```
 
-Full Sailboat body is omitted by default. Pass `--full` to include it.
+Full Start/Stop/Continue body is omitted by default. Pass `--full` to include it.
 
 ## Known Limitation
 
