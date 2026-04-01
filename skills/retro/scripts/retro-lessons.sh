@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # retro-lessons.sh — Validate/retrieve/inject LESSONS.md (v2 schema).
 # Supports dual-location: global (~/.agents/lessons/) and project-local (<repo>/.agents/lessons/).
+# Project-local lessons are opt-in: only used if .agents/lessons/ directory already exists.
+# Worktree-aware: always resolves to the MAIN repo root, not the active linked-worktree root.
+# Pure bash + standard unix tools only. No jq/python/node/curl.
+# Supports dual-location: global (~/.agents/lessons/) and project-local (<repo>/.agents/lessons/).
 # Pure bash + standard unix tools only. No jq/python/node/curl.
 set -euo pipefail
 
@@ -9,18 +13,26 @@ DEFAULT_FILE="$GLOBAL_FILE"
 
 # ── path detection ────────────────────────────────────────────────────────────
 
-# Find the git repository root from the current directory.
+# Find the MAIN git repository root from any worktree.
+# 'git worktree list' always lists the main worktree first.
 # Returns empty string if not in a git repo.
-_git_root() {
-  git rev-parse --show-toplevel 2>/dev/null || true
+_main_repo_root() {
+  git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}' || true
 }
 
-# Return the project-local lessons file path (or empty if not in a git repo).
+# Return the project-local lessons file path, or empty if:
+#   a) not in a git repo, OR
+#   b) .agents/lessons/ directory does not exist (opt-in — user must create it).
 _local_file() {
   local root
-  root=$(_git_root)
+  root=$(_main_repo_root)
   if [[ -n "$root" ]]; then
-    echo "${root}/.agents/lessons/LESSONS.md"
+    local lessons_dir="${root}/.agents/lessons"
+    # Only return a path if the directory already exists.
+    # Users enable project-local lessons by creating: mkdir -p <repo>/.agents/lessons
+    if [[ -d "$lessons_dir" ]]; then
+      echo "${lessons_dir}/LESSONS.md"
+    fi
   fi
 }
 
@@ -49,7 +61,7 @@ Default FILE: ~/.agents/lessons/LESSONS.md  (use - for stdin)
 
 Location flags (applicable to retrieve, inject, count, validate):
   --global          Use ~/.agents/lessons/LESSONS.md (default)
-  --local           Use <git-repo-root>/.agents/lessons/LESSONS.md
+  --local           Use <main-repo-root>/.agents/lessons/LESSONS.md (opt-in: dir must exist)
   --both            Operate across both files (inject/retrieve merge results)
 
 Subcommands:
@@ -59,11 +71,12 @@ Subcommands:
     --scope <pattern>        Match entries where > Scope: contains <pattern>
     --operation <op>         Match entries where > Scope: contains <op>
     --recent <N>             Return last N entries (newest first)
-    --full                   Include full body (Sailboat fields)
+    --full                   Include full body (Start/Stop/Continue fields)
   inject [--budget N] [FILE] Print top-5 lessons formatted for prompt context
   count [FILE]               Print number of v2 entries
-  migrate [--dry-run] [FILE] Upgrade v1 entries to v2 by injecting placeholder headers
-  paths                      Show resolved global and local lesson file paths
+  migrate [--dry-run] [FILE]        Upgrade v1 entries to v2 by injecting placeholder headers
+  migrate-schema [--dry-run] [FILE] Rename Sailboat fields to Start/Stop/Continue in-place
+  paths                             Show resolved global and local lesson file paths
   checkpoint [--global|--local|FILE]  Commit dirty LESSONS.md before writing (concurrent-write safety)
   finalize   [--global|--local|FILE] [--date YYYY-MM-DD]  Commit LESSONS.md after writing new entry
   --help                     Show this help and exit
@@ -175,11 +188,15 @@ cmd_validate() {
         echo "ERROR: $f line $ln: missing '> Scope:'" >&2; (( errors++ )) || true
       fi
       if [[ $is_synth -eq 0 ]]; then
-        for field in '\*\*Wind' '\*\*Anchor' '\*\*Rocks' '\*\*Next'; do
-          if ! echo "$body" | grep -qE "$field"; then
-            echo "WARN: $f line $ln: missing body field matching $field" >&2
-          fi
-        done
+        # Accept Start/Stop/Continue (current schema) or Sailboat (legacy — warn to migrate)
+        local has_ssc=0 has_sailboat=0
+        echo "$body" | grep -qE '\*\*Start |\*\*Stop |\*\*Continue ' && has_ssc=1
+        echo "$body" | grep -qE '\*\*Wind |\*\*Anchor ' && has_sailboat=1
+        if [[ $has_ssc -eq 0 && $has_sailboat -eq 0 ]]; then
+          echo "WARN: $f line $ln: missing body fields (expected **Start**, **Stop**, **Continue**)" >&2
+        elif [[ $has_sailboat -eq 1 && $has_ssc -eq 0 ]]; then
+          echo "WARN: $f line $ln: uses legacy Sailboat format — run: retro-lessons.sh migrate-schema $f" >&2
+        fi
       else
         local synth_body_line
         synth_body_line=$(echo "$body" | grep -v '^> ' | grep -v '^## ' | grep -v '^[[:space:]]*$' | head -1 || true)
@@ -570,6 +587,59 @@ cmd_migrate() {
   fi
 }
 
+# ── migrate-schema ─────────────────────────────────────────────────────────────────────────────────
+# Mechanically rename Sailboat body fields to Start/Stop/Continue in-place.
+# Wind → Continue, Anchor → Stop, Rocks → Stop (risks), Next → Start.
+# LLM review recommended afterward to merge the two Stop blocks into one.
+
+cmd_migrate_schema() {
+  local dry_run=0 file="$DEFAULT_FILE"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) dry_run=1; shift ;;
+      *) file="$1"; shift ;;
+    esac
+  done
+  if [[ ! -f "$file" ]]; then
+    echo "ERROR: file not found: $file" >&2; exit 1
+  fi
+
+  local tmp; tmp=$(mktemp)
+  # Store emoji in variables first; assign with printf to avoid shell-quoting issues.
+  # Renames: Wind→Continue, Anchor→Stop, Rocks→Stop(risks), Next→Start
+  local F_WIND F_ANCHOR F_ROCKS F_NEXT T_CONTINUE T_STOP T_STOP_R T_START
+  F_WIND=$(printf '**Wind \U1F32C\UFE0F:**')
+  F_ANCHOR=$(printf '**Anchor \u2693:**')
+  F_ROCKS=$(printf '**Rocks \U1FAA8:**')
+  F_NEXT=$(printf '**Next \U1F9ED:**')
+  T_CONTINUE=$(printf '**Continue \u2705:**')
+  T_STOP=$(printf '**Stop \U1F6D1:**')
+  T_STOP_R=$(printf '**Stop \U1F6D1 (risks):**')
+  T_START=$(printf '**Start \U1F680:**')
+
+  # Apply renames using awk (handles multi-byte chars reliably without sed locale issues)
+  awk -v fw="$F_WIND" -v fa="$F_ANCHOR" -v fr="$F_ROCKS" -v fn="$F_NEXT" \
+      -v tc="$T_CONTINUE" -v ts="$T_STOP" -v tsr="$T_STOP_R" -v tst="$T_START" '
+  {
+    gsub(fw, tc)
+    gsub(fa, ts)
+    gsub(fr, tsr)
+    gsub(fn, tst)
+    print
+  }' "$file" > "$tmp"
+
+  if [[ $dry_run -eq 1 ]]; then
+    echo "Schema migration preview (Sailboat → Start/Stop/Continue):" >&2
+    diff -u "$file" "$tmp" || true
+    rm -f "$tmp"
+  else
+    mv "$tmp" "$file"
+    echo "Schema migrated: Sailboat → Start/Stop/Continue in $file" >&2
+    echo "NOTE: Two **Stop** blocks may exist per entry where Anchor+Rocks both appeared." >&2
+    echo "      Review and merge them into a single **Stop** block." >&2
+  fi
+}
+
 # ── checkpoint ───────────────────────────────────────────────────────────────
 # Before writing a new retro entry: commit any pre-existing uncommitted changes
 # to LESSONS.md so a concurrent worktree's write is not silently overwritten.
@@ -667,9 +737,10 @@ case "$subcmd" in
   retrieve)   cmd_retrieve "$@" ;;
   inject)     cmd_inject   "$@" ;;
   count)      cmd_count    "$@" ;;
-  migrate)    cmd_migrate  "$@" ;;
-  paths)      cmd_paths    "$@" ;;
-  checkpoint) cmd_checkpoint "$@" ;;
-  finalize)   cmd_finalize   "$@" ;;
+  migrate)         cmd_migrate  "$@" ;;
+  migrate-schema)  cmd_migrate_schema "$@" ;;
+  paths)           cmd_paths    "$@" ;;
+  checkpoint)      cmd_checkpoint "$@" ;;
+  finalize)        cmd_finalize   "$@" ;;
   *)          echo "Unknown subcommand: $subcmd" >&2; usage ;;
 esac

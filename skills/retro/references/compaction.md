@@ -32,14 +32,14 @@ Read the full `LESSONS.md`. Extract all entries as structured data:
 
 ### Phase 2: Pattern Detection
 
-For each of the four fields (Wind, Anchor, Rocks, Next), cluster entries by theme.
+For each of the three fields (Start, Stop, Continue), cluster entries by theme.
 
 Clustering heuristic — group entries that share:
 - The same root cause (e.g., "assumed path", "wrong branch", "missing clarification")
 - The same tag and similar problem description
 - Similar "Next" actions pointing at the same fix
 
-**Promotion threshold:** 3 or more entries with the same root cause → promote to durable rule.
+**Promotion threshold:** 3 or more entries with the same root cause → promote to durable one-liner rule.
 
 **Staleness scoring (v2):** Count the number of times each entry has been classified `Irrelevant` across all audits in the file. Entries with 3 or more `Irrelevant` audit records are stale candidates — deprioritize or remove them during synthesis rather than propagating them to the SYNTHESIZED entry.
 
@@ -63,7 +63,7 @@ When merging audit histories: a pattern that was Applied in 3+ source entries is
 
 ## SYNTHESIZED — Branch verification before writes | git-hygiene planning
 > Trigger: Starting autonomous implementation in any repository
-> Action: Run git branch --show-current and confirm working directory before any file edit
+> Action: Run git worktree list and confirm main root and branch before any file edit
 > Scope: git-commit
 Branch confusion is a repeated root cause for avoidable rework across 4 sessions.
 Explicit preflight checks reduce silent scope drift and keep file changes contained.
@@ -97,11 +97,11 @@ Example promotion:
 > Promoted from LESSONS.md by the `retro` skill. Do not edit manually.
 
 ### Planning
-- Always verify branch with `git branch --show-current` before any file modifications.
-- Ask 1–2 clarifying questions before starting any ambiguous task.
+- ALWAYS verify branch with `git branch --show-current` before any file modifications. <!-- tag: git-hygiene, promoted: 2026-03-31 -->
+- BEFORE starting ambiguous tasks, ask 1–2 clarifying questions about scope. <!-- tag: planning, promoted: 2026-03-31 -->
 
 ### Tool Use
-- Locate `package.json` and project root with glob/ls before assuming directory structure.
+- ALWAYS locate `package.json` and project root with glob/ls before assuming directory structure. <!-- tag: tool-use, promoted: 2026-03-31 -->
 ```
 
 ## Anti-Patterns to Avoid

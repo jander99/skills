@@ -1,7 +1,7 @@
 # Lesson Entry Schema v2
 
 This document defines the v2 markdown entry format for `LESSONS.md`.
-It extends the existing Sailboat+Forward body by inserting three header lines between the `##` heading and the body fields.
+It extends the v2 base (Trigger/Action/Scope headers) with the **Start/Stop/Continue** body, replacing the legacy Sailboat fields.
 
 ## Canonical v2 Entry
 
@@ -10,18 +10,17 @@ It extends the existing Sailboat+Forward body by inserting three header lines be
 > Trigger: <when this lesson applies — situation, operation, or context>
 > Action: <what to do differently — concrete behavior>
 > Scope: <operation-type, file-path-glob, or general>
-**Wind 🌬️:** <what helped or worked well>
-**Anchor ⚓:** <what went wrong or slowed progress>
-**Rocks 🪨:** <risks or unknowns remaining>
-**Next 🧭:** <one concrete action for next session>
+**Start 🚀:** <new practice to adopt next session>
+**Stop 🛑:** <habit, approach, or pattern to eliminate>
+**Continue ✅:** <what worked well and should be maintained>
 ```
 
 Placement rule:
-- The three new lines (`> Trigger:`, `> Action:`, `> Scope:`) MUST appear directly after the `##` heading and before `**Wind 🌬️:**`.
+- The three new lines (`> Trigger:`, `> Action:`, `> Scope:`) MUST appear directly after the `##` heading and before `**Start 🚀:**`.
 
 ## SYNTHESIZED v2 Entry Variant
 
-SYNTHESIZED entries use the same three header lines, but the body is freeform synthesis text instead of Sailboat fields.
+SYNTHESIZED entries use the same three header lines, but the body is freeform synthesis text instead of Start/Stop/Continue fields.
 
 ```markdown
 ## SYNTHESIZED — <title> | tag1 tag2
@@ -70,36 +69,39 @@ An entry is well-formed when all of the following are true:
   - `> Trigger: ...`
   - `> Action: ...`
   - `> Scope: ...`
-- For standard entries, all four body fields are present in order:
-  - `**Wind 🌬️:**`
-  - `**Anchor ⚓:**`
-  - `**Rocks 🪨:**`
-  - `**Next 🧭:**`
+- For standard entries, all three body fields are present in order:
+  - `**Start 🚀:**`
+  - `**Stop 🛑:**`
+  - `**Continue ✅:**`
 - For SYNTHESIZED entries, at least one non-empty synthesis body line appears after `> Scope:`.
+
+### Legacy Sailboat Format (warn, don't error)
+
+Entries using `**Wind 🌬️:**`, `**Anchor ⚓:**`, `**Rocks 🪨:**`, `**Next 🧭:**` are considered **legacy**.
+The validator emits a WARN and suggests running `retro-lessons.sh migrate-schema <file>`.
 
 ### Malformed or Invalid Entry
 
 An entry is malformed or invalid when any of these conditions occur:
 - Missing one or more required header lines.
 - Header lines exist but are out of order.
-- `> Trigger:`, `> Action:`, or `> Scope:` appears after `**Wind 🌬️:**`.
-- Standard entry missing any Sailboat body field.
-- SYNTHESIZED entry uses Sailboat body fields instead of synthesis text.
-- Heading does not include a tag segment after `|` (parser should normalize to `[untagged]` only when the heading otherwise parses).
+- `> Trigger:`, `> Action:`, or `> Scope:` appears after `**Start 🚀:**`.
+- Standard entry missing all body fields (neither S/S/C nor Sailboat present).
+- SYNTHESIZED entry uses body fields instead of synthesis text.
+- Heading does not include a tag segment after `|` (parser normalizes to `[untagged]`).
 
 ## Required Examples
 
-### Example A: Standard v2 entry (all fields)
+### Example A: Standard v2 entry (Start/Stop/Continue)
 
 ```markdown
-## 2026-03-06 23:10 | tool-use git-hygiene
-> Trigger: Before changing files in a shared repo worktree
-> Action: Check branch and worktree context first, then edit
+## 2026-03-31 14:20 | tool-use git-hygiene
+> Trigger: Before changing files in a shared repo or worktree
+> Action: Check main repo root and branch context first, then edit
 > Scope: git-commit
-**Wind 🌬️:** Verifying branch before edits prevented accidental writes to main.
-**Anchor ⚓:** I previously assumed branch context and lost time unwinding mistakes.
-**Rocks 🪨:** In multi-worktree setups, stale assumptions can still leak across sessions.
-**Next 🧭:** Run `git branch --show-current` at the start of every coding task.
+**Start 🚀:** Run `git worktree list --porcelain | awk '/^worktree /{print $2; exit}'` at task start to confirm main root.
+**Stop 🛑:** Assumed branch/worktree context without verifying — caused edits to wrong directory.
+**Continue ✅:** Reading existing file before writing prevented silent overwrites.
 ```
 
 ### Example B: SYNTHESIZED v2 entry
@@ -107,7 +109,7 @@ An entry is malformed or invalid when any of these conditions occur:
 ```markdown
 ## SYNTHESIZED — Worktree safety and branch checks | git-hygiene planning
 > Trigger: Starting autonomous implementation in repositories with multiple worktrees
-> Action: Validate working directory and branch before any write operation
+> Action: Validate main repo root and branch before any write operation
 > Scope: general
 Branch confusion is a repeated root cause for avoidable rework.
 Explicit preflight checks reduce silent scope drift and keep file changes contained.
@@ -116,12 +118,24 @@ Explicit preflight checks reduce silent scope drift and keep file changes contai
 ### Example C: Minimal valid entry (well-formed but sparse)
 
 ```markdown
-## 2026-03-06 23:20 | [untagged]
+## 2026-03-31 15:00 | [untagged]
 > Trigger: Any task handoff
 > Action: Record one concrete next move
 > Scope: general
-**Wind 🌬️:** Clear handoff note helped.
-**Anchor ⚓:** None notable.
-**Rocks 🪨:** Follow-up context can still decay.
-**Next 🧭:** Start next session by reading the latest lesson.
+**Start 🚀:** Begin next session by reading the latest lesson.
+**Stop 🛑:** Skipping handoff notes when the task feels "obviously done."
+**Continue ✅:** Concise handoff entries resume quickly.
+```
+
+### Example D: Legacy Sailboat (validator warns, run migrate-schema)
+
+```markdown
+## 2026-01-15 10:00 | git-hygiene
+> Trigger: Before committing
+> Action: Run git status first
+> Scope: git-commit
+**Wind 🌬️:** Caught a dirty tree.       ← WARN: legacy format, run migrate-schema
+**Anchor ⚓:** Forgot tests.
+**Rocks 🪨:** CI flakiness.
+**Next 🧭:** Add test step.
 ```

@@ -3,7 +3,7 @@ name: retro
 description: "Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files using the retrieve-verify loop. Auto-trigger setup: install OpenCode plugin hooks, Claude Code Stop hooks, and Cline TaskComplete hooks so retros fire automatically when all todos complete. Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem, or when setting up automatic retro triggers."
 license: MIT
 metadata:
-  version: 2.0.0
+  version: 3.0.0
   author: jeff
   audience: developers, agents
   workflow: retrospective, self-improvement, lessons-learned
@@ -11,7 +11,7 @@ metadata:
 
 ## Quick Start
 
-**Prerequisites:** Write access to `~/.agents/lessons/` (global) and optionally `<git-repo-root>/.agents/lessons/` (project-local). Git configured.
+**Prerequisites:** Write access to `~/.agents/lessons/` (global) and optionally `<git-repo-root>/.agents/lessons/` (project-local, opt-in). Git configured.
 
 **When to run:** At session end · when asked to "reflect", "debrief", "post-mortem", or "write lessons" · auto-triggered when all todos complete.
 
@@ -23,11 +23,12 @@ metadata:
 
 ## What I Do
 
-- Run structured self-assessments using the Sailboat+Forward rubric (Wind / Anchor / Rocks / Next)
+- Run structured self-assessments using the **Start/Stop/Continue** rubric (Start 🚀 / Stop 🛑 / Continue ✅)
+- **Ask the user 1–2 targeted questions** before writing — retros must never auto-resolve silently
 - Classify lessons as global (cross-project) or project-local (language/framework/repo-specific) and write to the correct file
 - Retrieve and inject relevant past lessons before high-risk operations (the retrieve-verify loop)
 - Audit whether injected lessons were Applied, Violated, or Irrelevant
-- Compact LESSONS.md when it exceeds 20 entries; promote 3+ occurrence patterns to AGENTS.md
+- Compact LESSONS.md when it exceeds 20 entries; promote 3+ occurrence patterns to AGENTS.md as **one-liner rules**
 - Set up auto-trigger hooks (OpenCode plugin, Claude Code Stop hook, Cline TaskComplete hook)
 
 ---
@@ -36,20 +37,32 @@ metadata:
 
 The v2 retro skill runs a five-phase **reflect → store → retrieve → inject → verify** loop.
 
-1. **Reflect** — assess the session via `session_read` transcript (OpenCode) or context-window reconstruction (all other tools). Identify correction loops, tool failures, and user redirects. Ask the human up to 3 targeted questions before writing. See [references/session-read.md](references/session-read.md).
+1. **Reflect** — assess the session via `session_read` transcript (OpenCode) or context-window reconstruction (all other tools). Identify correction loops, tool failures, and user redirects.
 
-2. **Store** — classify the lesson as **global** or **project-local** (see classification rules below), then append a v2 entry to the correct `LESSONS.md`. **Before writing, run the concurrent-write checkpoint; after writing, run finalize (see Concurrent-Write Safety below).** Increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md`. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
+   **REQUIRED: Ask the user 1–2 targeted questions before writing.** Do not skip this even in auto-trigger mode. Examples:
+   - "What frustrated you most this session?"
+   - "Was there anything you wanted me to do differently?"
+   - "Did anything surprise you about how this went?"
+
+   Wait for their answers. Then incorporate their input into the entry. See [references/session-read.md](references/session-read.md).
+
+2. **Store** — classify the lesson as **global** or **project-local** (see classification rules below), then append a v2 entry to the correct `LESSONS.md`. **Before writing, run the concurrent-write checkpoint; after writing, run finalize (see Concurrent-Write Safety below).** Increment `<!-- retro:entries:N -->`. If N+1 > 20, run compaction. Check whether any theme appears 3+ times; if so, promote to `AGENTS.md` as a **one-liner rule**. See [references/compaction.md](references/compaction.md) and [references/promotion.md](references/promotion.md).
 
    **Classification rules:**
    - **Global** → `~/.agents/lessons/LESSONS.md`: tool-agnostic lessons, workflow habits, communication patterns, cross-project debugging approaches, general engineering principles.
-   - **Project-local** → `<git-repo-root>/.agents/lessons/LESSONS.md`: lessons tied to the project's language/framework (ruff/poetry, Maven, npm scripts), project-specific file paths, repo conventions, or any lesson whose Scope contains a project-specific path glob.
+   - **Project-local** → `<git-repo-root>/.agents/lessons/LESSONS.md`: lessons tied to the project's language/framework, project-specific file paths, repo conventions. **Opt-in**: only write here if `.agents/lessons/` directory already exists. Do NOT create it.
    - **Fallback**: if not inside a git repository, always write to `~/.agents/lessons/LESSONS.md`.
+
+   **Worktree awareness:** If working inside a git linked worktree, the project-local path is relative to the **main repo root**, not the worktree directory. Get the main root with:
+   ```bash
+   git worktree list --porcelain | awk '/^worktree /{print $2; exit}'
+   ```
 
 3. **Retrieve** — at session start, run `retro-lessons.sh inject --both` to pull top lessons from both global and project-local files. Before high-risk ops (git-push, git-commit, file-deletion, deployment, secrets-handling), run `retro-lessons.sh retrieve --both --operation <op>`. See [references/retrieval.md](references/retrieval.md).
 
 4. **Inject** — format retrieved lessons into a compact `## Relevant Lessons` block (≤500 tokens, ≤5 bullets) and place in context before acting. Each bullet: `- **[tag]**: Action (Trigger: trigger)`. See [references/injection.md](references/injection.md).
 
-5. **Verify** — after writing the Sailboat rubric, append an `> Audit:` block classifying each injected lesson as **Applied**, **Violated**, or **Irrelevant**. Violations generate a new reinforcing entry. See [references/audit.md](references/audit.md).
+5. **Verify** — after writing the Start/Stop/Continue rubric, append an `> Audit:` block classifying each injected lesson as **Applied**, **Violated**, or **Irrelevant**. Violations generate a new reinforcing entry. See [references/audit.md](references/audit.md).
 
 ---
 
@@ -104,22 +117,23 @@ bash skills/retro/scripts/retro-lessons.sh finalize --local
 
 ## Entry Format
 
-v2 entries have an 8-line structure — heading + 3 retrieval headers + 4 Sailboat fields:
+v2 entries have an 8-line structure — heading + 3 retrieval headers + 3 Start/Stop/Continue fields:
 
 ```markdown
 ## YYYY-MM-DD HH:MM | tag1 tag2
 > Trigger: <when this lesson applies>
 > Action: <what to do differently>
 > Scope: <file-path-glob, operation-type, or general>
-**Wind 🌬️:** <what went well>
-**Anchor ⚓:** <what went wrong>
-**Rocks 🪨:** <risks/unknowns>
-**Next 🧭:** <concrete next action>
+**Start 🚀:** <new practice to adopt next session>
+**Stop 🛑:** <habit or approach to eliminate>
+**Continue ✅:** <what worked well and should continue>
 ```
 
 SYNTHESIZED variant: `## SYNTHESIZED — <title> | tag1 tag2` + same 3 headers + freeform body.
 
 Full validation rules and examples → [references/schema.md](references/schema.md).
+
+**Migrating old Sailboat entries:** Run `retro-lessons.sh migrate-schema <file>` to mechanically rename Wind→Continue, Anchor→Stop, Rocks→Stop(risks), Next→Start. Review the output to merge the two Stop blocks into one.
 
 ---
 
@@ -136,9 +150,10 @@ retro-lessons.sh count                         # show entry count
 retro-lessons.sh paths                         # show resolved global and local paths
 retro-lessons.sh checkpoint ~/.agents/lessons/LESSONS.md  # pre-write: commit any dirty state
 retro-lessons.sh finalize ~/.agents/lessons/LESSONS.md    # post-write: commit new entry
+retro-lessons.sh migrate-schema [FILE]         # rename Sailboat fields → Start/Stop/Continue
 ```
 
-Default file: `~/.agents/lessons/LESSONS.md`. Pass `--local` (project-local), `--global` (default), or `--both` (merge from both files). Use `paths` subcommand to inspect resolved paths.
+Default file: `~/.agents/lessons/LESSONS.md`. Pass `--local` (project-local, opt-in), `--global` (default), or `--both` (merge from both files). Use `paths` subcommand to inspect resolved paths.
 
 ---
 
@@ -165,11 +180,11 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 | [references/injection.md](references/injection.md) | Injection format, two-layer injection, 500-token budget, anti-patterns |
 | [references/audit.md](references/audit.md) | 5-phase audit protocol — Applied/Violated/Irrelevant, violations → new entries |
 | [references/compaction.md](references/compaction.md) | Compact when N>20 — archive, pattern detection, SYNTHESIZED output |
-| [references/promotion.md](references/promotion.md) | Promote 3+ occurrence patterns to AGENTS.md / CLAUDE.md |
-| [references/migration.md](references/migration.md) | v1-to-v2 migration guide |
+| [references/promotion.md](references/promotion.md) | Promote 3+ occurrence patterns to AGENTS.md as one-liner rules |
+| [references/migration.md](references/migration.md) | v1-to-v2 migration guide; Sailboat→Start/Stop/Continue schema migration |
 | [references/session-read.md](references/session-read.md) | `session_read` usage in OpenCode, graceful degradation |
 | [references/auto-trigger.md](references/auto-trigger.md) | Hook setup for OpenCode, Claude Code, Cline; AGENTS.md snippet |
-| [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate, paths subcommands; `--global`/`--local`/`--both` flags |
+| [scripts/retro-lessons.sh](scripts/retro-lessons.sh) | Bash parser: validate, retrieve, inject, count, migrate, migrate-schema, paths subcommands |
 | [Concurrent-Write Safety](#concurrent-write-safety) | `checkpoint`/`finalize` protocol to prevent concurrent-worktree data loss |
 
 ---
@@ -180,10 +195,13 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 |-------|-----|
 | Wrong LESSONS.md path | Run `retro-lessons.sh paths` to see resolved global and local paths |
 | v1 entry (no Trigger/Action/Scope) | Run `retro-lessons.sh migrate` to upgrade to v2 format |
+| Sailboat fields (Wind/Anchor/Rocks/Next) | Run `retro-lessons.sh migrate-schema <file>` to rename to Start/Stop/Continue |
 | Token budget exceeded at injection | Trim to ≤5 bullets; oldest entries trimmed first |
 | Compaction triggered but <20 entries | Check `<!-- retro:entries:N -->` counter — may be miscounted; use `retro-lessons.sh count` |
 | Audit markers missing | Note `> Audit: no injection markers found; best-effort recall used.` |
 | LESSONS.md overwritten by concurrent worktree | Run `checkpoint` before reading; run `finalize` immediately after writing |
+| Project-local lessons not writing | Check `.agents/lessons/` directory exists in main repo root (opt-in) |
+| Wrong path in worktree | Use `git worktree list --porcelain \| awk '/^worktree /{print $2; exit}'` for main root |
 
 ---
 
@@ -191,13 +209,13 @@ Setup for auto-trigger (hooks + AGENTS.md snippet) → [references/auto-trigger.
 
 ```
 User: "run retro"
-Agent: assesses session → injects lessons → writes v2 entry → audits → appends to LESSONS.md
+Agent: asks 1-2 questions → waits for answers → writes v2 S/S/C entry → audits → appends to LESSONS.md
 
 User: "compact lessons"
-Agent: synthesizes 20+ entries → writes SYNTHESIZED blocks → resets counter → promotes patterns
+Agent: synthesizes 20+ entries → writes SYNTHESIZED blocks → resets counter → promotes one-liner patterns
 
 User: "we're done, reflect on what happened"
-Agent: session_read (OpenCode) or context-window → Sailboat rubric → Audit block → LESSONS.md
+Agent: session_read (OpenCode) or context-window → asks user questions → Start/Stop/Continue rubric → Audit block → LESSONS.md
 ```
 
 ---
