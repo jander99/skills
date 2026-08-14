@@ -1,6 +1,6 @@
 ---
 name: spring-boot-core
-description: Build, create, configure, and structure Spring Boot microservices with dependency injection (constructor injection), @ConfigurationProperties validation, profile-based configuration, Actuator health checks, and bean lifecycle management. Use when creating Spring Boot services, configuring beans, setting up health endpoints, implementing DI patterns, or structuring microservice projects.
+description: Build, create, configure, structure, and scaffold Spring Boot 3.x microservices with dependency injection (constructor injection), @ConfigurationProperties validation, profile-based configuration (dev/staging/prod), Actuator health checks, custom HealthIndicator beans, Kubernetes liveness/readiness probes, and bean lifecycle management. Fix DI failures (UnsatisfiedDependencyException, NoSuchBeanDefinitionException) and BindException errors, validate environment-specific YAML, and implement secure configuration patterns. Use when creating Spring Boot services, configuring beans, setting up health endpoints, implementing DI patterns, or structuring microservice projects.
 license: MIT
 metadata:
   version: 1.0.0

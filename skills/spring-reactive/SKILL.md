@@ -1,6 +1,6 @@
 ---
 name: spring-reactive
-description: Build reactive APIs and services with Spring WebFlux, Project Reactor (Mono, Flux), WebClient, and reactive operators. Capabilities include MDC context propagation (ContextRegistry, Hooks.enableAutomaticContextPropagation), WebClient configuration (timeouts, error handling, retry), reactive operator chains (flatMap, switchIfEmpty, zip), and blocking detection. Use when implementing WebFlux endpoints, propagating MDC/trace context across reactive boundaries, configuring WebClient, debugging context loss, handling backpressure, or testing reactive streams with StepVerifier.
+description: Build, configure, deploy, monitor, and optimize reactive APIs and services with Spring WebFlux, Project Reactor (Mono, Flux), WebClient, and reactive operators. Capabilities include MDC context propagation (ContextRegistry, Hooks.enableAutomaticContextPropagation), WebClient configuration (timeouts, error handling, retry), reactive operator chains (flatMap, switchIfEmpty, zip), and blocking detection with BlockHound. Configure Schedulers, WebTestClient, deferContextual, and contextWrite for production. Use when implementing WebFlux endpoints, propagating MDC/trace context across reactive boundaries, configuring WebClient, debugging context loss, handling backpressure, or testing reactive streams with StepVerifier.
 license: MIT
 metadata:
   version: 1.0.0
