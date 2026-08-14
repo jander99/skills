@@ -1,9 +1,9 @@
 ---
 name: markdown-editor
 description: Create, write, generate, edit, update, and format markdown documentation (README, CHANGELOG, research notes, plans, guides, tutorials). Handles frontmatter metadata, directory organization, and file naming. Use when writing .md files, documenting code, creating project docs, saving research findings, building README files, managing TODO lists, or generating any markdown content.
-version: 1.0.1
 license: MIT
 metadata:
+  version: 1.0.1
   audience: developers, agents
   workflow: documentation
 ---
@@ -100,3 +100,10 @@ tags: [tag1, tag2]
 - [ ] Frontmatter included only when appropriate
 - [ ] Timestamps in ISO 8601 UTC format (ending in 'Z')
 - [ ] When editing: preserve `created`/`author`, update `last_modified`
+
+## Related Skills
+
+| Skill | Use When |
+|-------|----------|
+| [skill-helper](../skill-helper/) | Validate and improve this SKILL.md markdown file |
+| [retro](../retro/) | Format LESSONS.md and .retro/ archives |

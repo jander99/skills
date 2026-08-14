@@ -4,7 +4,6 @@ description: Create, validate, audit, review, refactor, optimize, and improve Ag
 license: MIT
 metadata:
   version: 2.0.0
-  author: OpenCode
   replaces: [skill-creator, skill-validator]
   audience: developers, agents
   workflow: skill-development

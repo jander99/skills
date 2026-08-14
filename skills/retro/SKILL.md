@@ -4,7 +4,6 @@ description: "Run, write, generate, record, save, persist, and synthesize agent 
 license: MIT
 metadata:
   version: 3.0.0
-  author: jeff
   audience: developers, agents
   workflow: retrospective, self-improvement, lessons-learned
 ---
@@ -32,6 +31,15 @@ metadata:
 - Set up auto-trigger hooks (OpenCode plugin, Claude Code Stop hook, Cline TaskComplete hook)
 
 ---
+
+## When to Use Me
+
+Use this skill when you:
+- Finish a task and need to capture lessons learned
+- Are asked to "reflect", "debrief", "post-mortem", or "write lessons"
+- Set up automatic retro triggers (OpenCode plugin, Claude Code Stop hook, Cline TaskComplete hook)
+- Compact LESSONS.md when entries exceed 20 entries
+- Promote recurring patterns (3+ occurrences) to AGENTS.md as one-liner rules
 
 ## The Loop
 

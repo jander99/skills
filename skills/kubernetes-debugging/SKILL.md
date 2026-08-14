@@ -1,6 +1,6 @@
 ---
 name: kubernetes-debugging
-description: Debug, troubleshoot, diagnose, and analyze Kubernetes clusters with kubectl (get, describe, logs, exec, debug). Interpret pod status (CrashLoopBackOff, ImagePullBackOff, Pending, OOMKilled), analyze events, inspect containers, check resources. Use when pods crash, services fail, deployments hang, or containers won't start.
+description: Debug, troubleshoot, diagnose, analyze, and resolve Kubernetes cluster incidents with kubectl (get, describe, logs, exec, debug). Interpret pod status (CrashLoopBackOff, ImagePullBackOff, Pending, OOMKilled, Evicted), analyze events, inspect containers, check resources, run ephemeral debug containers, and audit namespace contexts. Use kubectl debug with netshoot or busybox images for distroless and crashed containers, and run kubectl rollout status to monitor stuck deployments. Use when pods crash, services fail, deployments hang, or containers won't start.
 license: MIT
 metadata:
   version: 1.0.0

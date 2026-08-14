@@ -1,6 +1,6 @@
 ---
 name: gke-deployment
-description: Deploy, configure, and manage Kubernetes workloads on GKE with Deployments, Services, Ingress, HPA, health probes, ConfigMaps, and Secrets. Use when deploying containers to GKE, configuring load balancers, setting up autoscaling, writing health checks, managing environment configs, or troubleshooting pod issues.
+description: Deploy, configure, manage, scale, and secure Kubernetes workloads on GKE with Deployments, Services, Ingress, HPA, health probes, ConfigMaps, and Secrets. Build rolling update strategies, blue-green or canary releases, Workload Identity bindings, ManagedCertificate HTTPS Ingress, and container-native NEG load balancers. Write resource requests, limits, and topologySpreadConstraints for production. Use when deploying containers or microservices to GKE, configuring load balancers, setting up autoscaling, writing health checks, managing environment configs, troubleshooting pod issues, or integrating Workload Identity for GCP API access.
 license: MIT
 metadata:
   version: 1.0.0
