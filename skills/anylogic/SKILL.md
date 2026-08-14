@@ -4,7 +4,6 @@ description: Create, build, edit, validate, run, and export AnyLogic models with
 license: MIT
 metadata:
   version: 1.0.0
-  author: JDA0041
   audience: developers, modelers, agents
   workflow: anylogic-local-binary
 ---
