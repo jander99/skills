@@ -215,6 +215,83 @@ helm plugin install https://github.com/databus23/helm-diff
 helm diff upgrade myrelease ./mychart -f values-prod.yaml
 ```
 
+## Hooks
+
+Hooks let a chart run Kubernetes resources at specific points in the release lifecycle (e.g., run a DB migration Job before the new app pods start). Annotate any resource with `helm.sh/hook` to make it a hook.
+
+| Phase | Use Case |
+|-------|----------|
+| `pre-install`, `post-install` | Bootstrap, schema migrations, seeding |
+| `pre-upgrade`, `post-upgrade` | DB migrations, cache warmup |
+| `pre-delete`, `post-delete` | Backup, cleanup |
+| `test` | Helm test pod (run with `helm test`) |
+
+**Important:** Hooks are tracked in release metadata (`helm status`). Delete them with `helm uninstall --keep-history=false` or run them again with `helm upgrade --reuse-values`.
+
+### Example: pre-upgrade DB migration Job
+
+```yaml
+# templates/migrate-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-migrate
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-5"          # run before other pre-upgrade hooks
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["node", "./scripts/migrate.js"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "myapp.fullname" . }}-db
+                  key: url
+```
+
+**Hook deletion policies:**
+
+- `before-hook-creation` — delete previous hook when a new one is created (default for upgrades)
+- `hook-succeeded` — delete after successful run
+- `hook-failed` — delete after a failed run
+
+For database migrations, `before-hook-creation,hook-succeeded` ensures the migration Job is re-runnable on every upgrade but cleaned up after success.
+
+## OCI Registry (Helm v3.8+)
+
+Helm v3.8+ treats registries as first-class chart repositories via the OCI artifact spec. No `helm repo add` needed — `helm push` and `helm pull` speak OCI directly.
+
+### Push to OCI registry
+
+```bash
+# Authenticate (one-time)
+helm registry login registry.example.com --username <user> --password <token>
+
+# Package and push
+helm package ./mychart                            # produces mychart-0.1.0.tgz
+helm push mychart-0.1.0.tgz oci://registry.example.com/charts
+```
+
+### Pull and install from OCI
+
+```bash
+helm pull oci://registry.example.com/charts/mychart --version 0.1.0
+helm install myrelease oci://registry.example.com/charts/mychart --version 0.1.0
+```
+
+**Common OCI registries:** AWS ECR (`<aws_account_id>.dkr.ecr.<region>.amazonaws.com`), GCP Artifact Registry, Azure Container Registry, GitHub Container Registry (`ghcr.io/<org>/charts`), Harbor.
+
+> For CI workflows, authenticate with the registry's native token (e.g., `aws ecr get-login-password` for ECR) and `helm push` from a build job. See the [github-actions](../github-actions/) skill for OIDC patterns that pair well with OCI chart publishing.
+
 ## Context7 Integration
 
 Use Context7 MCP server for up-to-date Helm documentation:
