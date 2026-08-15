@@ -20,6 +20,7 @@ metadata:
 - Visualize and analyze the dependency graph (`nx graph`)
 - Set up task pipelines with `dependsOn` configuration
 - Move, rename, and remove projects safely
+- Version and publish releases with `nx release`
 
 ## When to Use Me
 
@@ -178,6 +179,80 @@ nx migrate --run-migrations
 # Clean up
 rm migrations.json
 ```
+
+## Release with `nx release`
+
+`nx release` is the built-in versioning, changelog, and publishing subcommand. It reads `nx.json` + each project's `package.json`, derives the next version (semver or independent), updates versions across the workspace, generates a changelog, creates git tags + GitHub releases, and (optionally) publishes to npm.
+
+### One-shot dry run
+
+```bash
+# Preview what would change without writing anything
+nx release --dry-run
+```
+
+### Version and publish to npm
+
+```bash
+# Bump versions, update lockfiles, tag, push, publish
+nx release version minor          # bump across workspace (e.g. 1.2.0 -> 1.3.0)
+nx release publish                # publish all publishable projects to npm
+```
+
+Or combine into a single command:
+
+```bash
+nx release --skip-publish=false   # version + publish in one step
+```
+
+### Independent versioning per project
+
+In `nx.json`, set the release config to version each project independently (common for libraries shipped separately):
+
+```json
+{
+  "release": {
+    "projectsRelationship": "independent",
+    "version": {
+      "generatorOptions": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
+  }
+}
+```
+
+### Configure groups and changelog
+
+`nx release` supports release groups — projects that version together. Define them in `nx.json`:
+
+```json
+{
+  "release": {
+    "groups": {
+      "shared": {
+        "projects": ["shared-ui", "shared-utils"],
+        "version": { "generatorOptions": { "currentVersionResolver": "git-tag" } }
+      }
+    },
+    "changelog": {
+      "workspaceChangelog": { "file": "CHANGELOG.md" },
+      "projectChangelogs": true
+    }
+  }
+}
+```
+
+### Common errors
+
+| Error | Solution |
+|-------|----------|
+| `ENOPKG: No matching package.json` | Run from workspace root or set `release.version.generatorOptions.packageRoot` |
+| Drift between lockfile and versions | Run `nx release version patch --skip-lockfile-update=false` (default true in 20+) |
+| Tag already exists | Use `--specifier=patch` or `nx release version --git-tag-match-pattern` |
+| Want to skip publish | `nx release --skip-publish=true` for version-only releases |
+
+> `nx release` replaces older hand-rolled release scripts (Changesets, Lerna-style flows). For new workspaces, prefer `nx release`; for older workspaces, the [Nx migration guide](https://nx.dev/recipes/nx-release/automate-git-releases) covers importing an existing changeset history.
 
 ## CI Base/Head Calculation
 

@@ -89,15 +89,14 @@ Use this skill when you:
 ## Type Hints Basics
 
 ```python
-from typing import Optional
-
+# Python 3.10+ PEP 585 + PEP 604: no typing imports needed for these
 def greet(name: str) -> str:
     return f"Hello {name}"
 
 def process_items(items: list[int]) -> dict[str, int]:
     return {"count": len(items), "sum": sum(items)}
 
-def find_user(user_id: int) -> Optional[str]:
+def find_user(user_id: int) -> str | None:
     return users.get(user_id)
 
 def parse_value(val: str | int) -> int:  # Python 3.10+
@@ -168,19 +167,14 @@ def db_connection(url: str):
 
 ### Example 1: Dataclass with Type Hints
 ```python
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
 
 @dataclass
 class User:
     id: int
     name: str
     email: str
-    tags: List[str] = None
-    
-    def __post_init__(self):
-        if self.tags is None:
-            self.tags = []
+    tags: list[str] = field(default_factory=list)
 
 # Usage
 user = User(id=1, name="Alice", email="alice@example.com")

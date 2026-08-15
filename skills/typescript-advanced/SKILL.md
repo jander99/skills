@@ -112,6 +112,119 @@ type Getters<T> = {
 };
 ```
 
+## Template Literal Types
+
+Template literal types let you compose string-literal types the same way
+you compose template literals at runtime. They shine for typed event names,
+CSS-in-TS APIs, and route builders.
+
+```typescript
+// Type-safe event names: onClick, onFocus, on...
+type EventName<T extends string> = `on${Capitalize<T>}`;
+type ButtonEvents = EventName<"click" | "focus" | "blur">;
+//   → "onClick" | "onFocus" | "onBlur"
+
+// Combine: build CSS prop from unit
+type CSSValue = `${number}${"px" | "rem" | "em"}`;
+// 50px, 1.5rem, 2em — all valid; "50" alone is not
+
+// Real-world: route paths from a list of resources + actions
+type Resource = "users" | "posts" | "comments";
+type Action = "list" | "create" | "edit";
+type ApiPath = `/api/${Resource}/${Action}`;
+// "/api/users/list" | "/api/users/create" | ... | "/api/comments/edit"
+```
+
+**Built-in template-literal helpers** (TypeScript 4.1+):
+
+```typescript
+Uppercase<"foo">       // "FOO"
+Lowercase<"FOO">       // "foo"
+Capitalize<"foo">      // "Foo"
+Uncapitalize<"Foo">    // "foo"
+```
+
+**Combine with mapped types to drive string-keyed APIs:**
+
+```typescript
+type PropEventListeners<T> = {
+  [K in keyof T as `${string & K}Changed`]?: (newValue: T[K]) => void;
+};
+
+interface Form {
+  email: string;
+  age: number;
+}
+// PropEventListeners<Form> gives you:
+//   emailChanged?: (newValue: string) => void
+//   ageChanged?:    (newValue: number) => void
+```
+
+## Declaration Merging
+
+TypeScript merges multiple declarations that share a name. The most common
+forms are **interface merging** and **module augmentation**.
+
+### Interface Merging
+
+When two interfaces with the same name are exported from the same module,
+TypeScript combines their members into one. Useful for extending a third-
+party interface (where `extends` is not an option):
+
+```typescript
+// Original
+interface User {
+  id: number;
+  name: string;
+}
+
+// Augment — same name, same module, members combine
+interface User {
+  email: string;
+  createdAt: Date;
+}
+
+const u: User = {
+  id: 1,
+  name: "Ada",
+  email: "ada@example.com",
+  createdAt: new Date(),
+};
+// All four fields required.
+```
+
+### Module Augmentation
+
+To add fields to an existing module's exported types, declare the module
+again in a file that's part of the compilation:
+
+```typescript
+// types.d.ts — ambient declaration merges with @types/express
+declare module "express" {
+  interface Request {
+    userId?: string;       // augmented onto Express.Request
+  }
+}
+
+// Usage: anywhere in the codebase, after this file is in tsconfig
+app.use((req, _res, next) => {
+  console.log(req.userId);   // typed as string | undefined
+  next();
+});
+```
+
+**Rules:**
+- Both declarations must be in the same module (file) **or** the augmenting
+  file must be loaded by the compiler (ambient `.d.ts` or referenced via
+  `include`).
+- You can only merge interfaces (and namespace-style merges with classes),
+  not type aliases.
+- Conflicting member types in the same interface will error.
+
+> Use module augmentation sparingly — over-augmenting makes a type harder
+> to reason about. Prefer wrapping (e.g., a `RequestWithUser` type) when
+> the augmented behavior is local.
+
 ## Conditional Types
 
 ```typescript

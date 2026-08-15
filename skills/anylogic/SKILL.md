@@ -159,6 +159,49 @@ Agent: Reads the agent/statechart definition, finds the existing Idle and Busy n
 
 **Result:** The statechart change is expressed as a model-definition update instead of an invented GUI macro.
 
+### Minimal `.alp` State and Transition Fragments
+
+These fragments show the **smallest matching block** shape for the two
+patterns the skill targets. Treat them as illustrative — actual `.alp`
+content varies by AnyLogic version, but the structural cues (state
+container, transition `to` / `trigger` / `action`, ID-style attributes)
+are stable.
+
+**State definition** (inside a `<Statechart>` or `<Agent>` block):
+
+```xml
+<State
+    name="Idle"
+    id="1700000000001">
+  <Entry>
+    <Code>queueSize = 0;</Code>
+  </Entry>
+  <Exit>
+    <Code>// no-op</Code>
+  </Exit>
+</State>
+```
+
+**Transition definition** (sibling to the states it connects):
+
+```xml
+<Transition
+    from="1700000000001"
+    to="1700000000002"
+    trigger="queueSize &gt; 0">
+  <Action>
+    <Code>activeAgent = true;</Code>
+  </Action>
+</Transition>
+```
+
+When patching:
+- Preserve the existing `id` scheme — referenced by `from` / `to`.
+- Keep `name` strings identical to what other states/events reference.
+- Match the surrounding XML's indentation and attribute ordering.
+- For arrow comparisons (`>`) in triggers, use the XML entity `&gt;` —
+  raw `>` breaks parsing.
+
 ## Common Errors
 
 | Error | Cause | Solution |

@@ -75,15 +75,22 @@ kubectl exec <pod> -- cat /etc/config
 ### Ephemeral Debug Containers
 
 ```bash
-# Add debug container to running pod
+# Add debug container to running pod (in-place, requires shareProcessNamespace)
 kubectl debug -it <pod> --image=busybox --target=<container>
 
-# Create pod copy with debug container
-kubectl debug <pod> -it --image=nicolaka/netshoot --copy-to=debug-pod
+# Create a copy of the pod with a debug container attached
+kubectl debug <pod> --copy-to=debug-pod --container=<container> --target=<container> --image=<image>
+# Example:
+kubectl debug myapp-7d9f8 --copy-to=debug-pod \
+  --container=app \
+  --target=app \
+  --image=nicolaka/netshoot -- bash
 
 # Debug node (host filesystem at /host)
 kubectl debug node/<node> -it --image=busybox
 ```
+
+The `--copy-to` form is the recommended pattern for **distroless** or **crashed** containers — it spins up a brand-new pod sharing the original's volumes, namespace, and labels, so you can attach a shell-capable debug image without modifying the running pod.
 
 ### Resources
 

@@ -52,8 +52,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
@@ -86,7 +86,7 @@ jobs:
         node: [18, 20, 22]
       fail-fast: false
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
 ```
@@ -95,12 +95,12 @@ jobs:
 
 ### Setup Actions (Recommended)
 ```yaml
-- uses: actions/setup-node@v4
+- uses: actions/setup-node@v7
   with:
     node-version: '20'
     cache: 'npm'  # Built-in caching
 
-- uses: actions/setup-python@v5
+- uses: actions/setup-python@v7
   with:
     python-version: '3.12'
     cache: 'pip'
@@ -108,7 +108,7 @@ jobs:
 
 ### Custom Cache
 ```yaml
-- uses: actions/cache@v4
+- uses: actions/cache@v6
   with:
     path: node_modules
     key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
@@ -171,7 +171,7 @@ jobs:
   build:
     steps:
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -179,7 +179,7 @@ jobs:
   deploy:
     needs: build
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -203,7 +203,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ inputs.node-version }}
 ```

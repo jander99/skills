@@ -159,7 +159,7 @@ class OrderControllerTest {
     @Autowired
     private WebTestClient webClient;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
     @Test
@@ -173,6 +173,8 @@ class OrderControllerTest {
     }
 }
 ```
+
+> **Note:** `@MockBean` from `org.springframework.boot.test.mock.mockito` is deprecated as of Spring Boot 3.4. Use `@MockitoBean` from `org.springframework.test.context.bean.override.mockito` instead — it has the same behavior but lives in the standardized Spring Framework package. Migration is a drop-in replacement: swap the import and the annotation name.
 
 ## Backpressure Basics
 

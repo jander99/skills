@@ -58,6 +58,84 @@ public class SecurityConfig {
 }
 ```
 
+## Password Encoding (BCrypt)
+
+Spring Security 5+ requires a `PasswordEncoder` bean. For new code, use
+`BCryptPasswordEncoder` (the default for `User.builder()` and most auth
+flows). The strength parameter is the log2 cost factor — default `10` is
+fine for most apps.
+
+```java
+@Configuration
+public class PasswordConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        // strength: log2 rounds. 10 ≈ 100ms on modern hardware; 12 ≈ 400ms.
+        return new BCryptPasswordEncoder(10);
+    }
+}
+```
+
+**Verify a raw password against an encoded value:**
+
+```java
+boolean matches = passwordEncoder.matches(rawPassword, user.getPasswordHash());
+```
+
+**Migration from legacy `NoOpPasswordEncoder` / `StandardPasswordEncoder`**
+(both deprecated): keep the old encoder for verification of existing rows
+while new rows use BCrypt, then re-hash on next successful login:
+
+```java
+DelegatingPasswordEncoder delegating = DelegatingPasswordEncoder
+    .builder("bcrypt")
+    .add("bcrypt", new BCryptPasswordEncoder())
+    .add("noop", NoOpPasswordEncoder.getInstance())   // legacy only
+    .add("sha-256", new StandardPasswordEncoder())    // legacy only
+    .build();
+```
+
+DelegatingPasswordEncoder inspects the `{bcrypt}` / `{noop}` prefix in the
+stored hash and routes verification to the right encoder. This is what
+Spring Security's default user schema uses.
+
+> **Don't roll your own crypto.** Use BCrypt for passwords, never MD5/SHA
+> alone. PBKDF2 (`Pbkdf2PasswordEncoder`) and SCrypt (`SCryptPasswordEncoder`)
+> are also valid choices when you need a non-BCrypt KDF.
+
+## Reactive Security
+
+For WebFlux / reactive stacks, swap `HttpSecurity` for `ServerHttpSecurity`
+and return a `SecurityWebFilterChain`. Most rules translate 1:1; the
+authorization DSL uses reactive types.
+
+```java
+@Configuration
+@EnableWebFluxSecurity
+public class ReactiveSecurityConfig {
+
+    @Bean
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
+        return http
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .authorizeExchange(auth -> auth
+                .pathMatchers("/api/public/**").permitAll()
+                .pathMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyExchange().authenticated())
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+            .build();
+    }
+}
+```
+
+**Don't mix servlet and reactive security on the same app.** Adding both
+`spring-boot-starter-security` and `spring-boot-starter-webflux` causes
+Spring Boot to auto-configure servlet security, which is rarely what you
+want on a reactive service. For full reactive patterns — MDC propagation,
+WebClient setup, blocking detection — see the [`spring-reactive`](../spring-reactive/SKILL.md)
+skill.
+
 ## JWT Patterns
 
 ### JWT Decoder with Validation
@@ -189,6 +267,7 @@ class OrderControllerTest {
 | Skill | Use For |
 |-------|---------|
 | `spring-boot-core` | Application configuration and DI |
+| `spring-reactive` | WebFlux, `ServerHttpSecurity`, MDC propagation |
 | `spring-testing` | Comprehensive test strategies |
 
 ## References

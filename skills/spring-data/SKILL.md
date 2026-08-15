@@ -58,6 +58,20 @@ public abstract class AuditableEntity {
 }
 ```
 
+> **Required:** Add `@EnableJpaAuditing` on a `@Configuration` class (usually
+> the main `Application` class or a dedicated `JpaConfig`) for JPA auditing
+> to actually fire. `@EntityListeners(AuditingEntityListener.class)` registers
+> the listener but does not enable auditing on its own — without
+> `@EnableJpaAuditing`, `createdAt` / `updatedAt` stay null.
+>
+> ```java
+> @SpringBootApplication
+> @EnableJpaAuditing
+> public class Application { }
+> ```
+>
+> For non-JPA datasources (MongoDB), use `@EnableMongoAuditing` instead.
+
 ## Repository Patterns
 
 ```java

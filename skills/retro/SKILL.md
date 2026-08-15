@@ -1,6 +1,6 @@
 ---
 name: retro
-description: "Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files using the retrieve-verify loop. Auto-trigger setup: install OpenCode plugin hooks, Claude Code Stop hooks, and Cline TaskComplete hooks so retros fire automatically when all todos complete. Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem, or when setting up automatic retro triggers."
+description: "Run, write, generate, record, save, persist, and synthesize agent retrospectives and lessons learned after completing tasks. Self-assess session quality, identify mistakes, extract reusable patterns, and update persistent LESSONS.md files using the retrieve-verify loop. Auto-trigger setup: install OpenCode plugin hooks, Claude Code Stop hooks, and Cline TaskComplete hooks so the retro prompt fires automatically when all todos complete — but the agent always asks the user 1–2 targeted questions before writing (retros never resolve silently). Works with session_read (OpenCode), context-window reconstruction (Claude Code, Cursor, Gemini CLI), and compaction pipelines. Use when finishing a task, at session end, when asked to reflect, review, debrief, or write a post-mortem, or when setting up automatic retro triggers."
 license: MIT
 metadata:
   version: 3.0.0
@@ -74,6 +74,26 @@ The v2 retro skill runs a five-phase **reflect → store → retrieve → inject
 
 ---
 
+
+## Auto-Trigger Behavior
+
+Hooks (OpenCode plugin, Claude Code Stop, Cline TaskComplete) only **fire the
+retro prompt** when all todos complete — they do not write anything
+themselves. The agent that picks up the prompt is still required to ask the
+user 1–2 questions and wait for answers before appending to `LESSONS.md`.
+
+Canonical behavior (apply in manual *and* auto-triggered runs):
+
+1. Hook fires → agent receives a "todos complete" or session-end signal.
+2. Agent asks 1–2 targeted questions (see The Loop → Reflect).
+3. Agent waits for user answers.
+4. Agent writes the Start/Stop/Continue entry only after answers arrive.
+5. Agent runs `finalize` to commit.
+
+If the user is unavailable, the agent should **stop at step 3** and emit a
+brief notice that the retro is queued — it must not auto-resolve, skip
+questions, or write a synthetic entry on the user's behalf. This is the
+single rule both modes must honor.
 
 ## Concurrent-Write Safety
 

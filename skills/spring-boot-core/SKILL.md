@@ -58,6 +58,13 @@ public class OrderService {
 
 **Benefits:** Immutable fields, explicit dependencies, easier testing, better IDE support.
 
+> **Note on `@Autowired`:** Spring auto-wires a class when there is a single
+> constructor, so you do **not** need `@Autowired` on it. Adding it is redundant
+> noise. Use `@Autowired` only when a class declares **multiple** constructors
+> and you need to mark one as the preferred injection target. Prefer field or
+> setter injection only when constructor injection is genuinely impossible
+> (e.g., framework constraints or optional collaborators).
+
 ### @ConfigurationProperties with Validation
 
 ```java
@@ -138,6 +145,72 @@ com.example.service/
   client/                    # External API clients
 ```
 
+## Production Operations
+
+### Graceful Shutdown
+
+Spring Boot 2.3+ supports graceful shutdown — when the JVM receives `SIGTERM`
+(Kubernetes pod eviction, `docker stop`), in-flight requests get a chance to
+finish before the context closes.
+
+```yaml
+# application.yml
+server:
+  shutdown: graceful            # 'immediate' (default) | 'graceful'
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s   # Max wait per SmartLifecycle phase
+```
+
+**How it works:**
+1. Server stops accepting new requests immediately on `SIGTERM`.
+2. In-flight requests continue until completion or `timeout-per-shutdown-phase` elapses.
+3. `SmartLifecycle` beans (e.g., Kafka listeners, scheduled tasks) stop in phase order.
+4. Context closes; JVM exits.
+
+**Verify readiness drains traffic first:**
+
+```yaml
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+```
+
+Readiness probe flips to `DOWN` when shutdown begins, so the Service / Ingress
+stops routing new traffic before the grace timer starts. Always pair
+`shutdown: graceful` with readiness probes — otherwise clients see connection
+refusals during the grace window.
+
+### Container Image Build (`spring-boot:build-image`)
+
+Spring Boot 3.x includes the Cloud Native Buildpacks integration out of the
+box. No Dockerfile required.
+
+**Maven:**
+```bash
+./mvnw spring-boot:build-image \
+  -Dspring-boot.build-image.imageName=us-docker.pkg.dev/PROJECT/REPO/my-app:1.0.0
+```
+
+**Gradle:**
+```bash
+./gradlew bootBuildImage \
+  --imageName=us-docker.pkg.dev/PROJECT/REPO/my-app:1.0.0
+```
+
+The build creates a layered OCI image with:
+- `dependencies` layer (deps that don't change often — high cache reuse)
+- `spring-boot-loader` (the launcher)
+- `application` (your code — top layer, invalidates least cache)
+
+**Customize the builder or layers** via `pom.xml` / `build.gradle` `build-image`
+configuration block (e.g., `builderRegistry`, `network`, `env`, `layers`).
+Useful when you need a non-default Java version, a private builder image, or
+to expose additional certificates.
+
 ## Quick Reference
 
 | Need | Solution |
@@ -150,6 +223,8 @@ com.example.service/
 | Secrets | Environment variables `${VAR_NAME}` |
 | Health check | Custom `HealthIndicator` bean |
 | K8s probes | `management.endpoint.health.probes.enabled=true` |
+| Graceful shutdown | `server.shutdown=graceful` + `spring.lifecycle.timeout-per-shutdown-phase` |
+| Build OCI image | `mvn spring-boot:build-image` (no Dockerfile) |
 
 ## Common Errors
 

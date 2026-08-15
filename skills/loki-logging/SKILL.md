@@ -190,7 +190,6 @@ context7_query-docs: libraryId=/grafana/loki, query="LogQL metric queries"
 
 | Skill | Relationship |
 |-------|-------------|
-| grafana-dashboards | Visualize Loki data |
 | prometheus-alerting | Alert on log-derived metrics |
 | opentelemetry-tracing | Correlate logs with traces |
 

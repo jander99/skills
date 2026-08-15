@@ -39,6 +39,102 @@ Use this skill when you:
 
 **TypeScript:** Use `NodeSDK` with `OTLPTraceExporter` and run with `--import` flag.
 
+## Spring Boot Path (Recommended for Java)
+
+For Spring Boot 3.x / Spring 6.x, **don't hand-roll the SDK** — use the official OpenTelemetry Spring Boot Starter. It auto-configures the SDK, exporters, and resource attributes from your `application.yml`, and integrates with Spring's observation API.
+
+### Add the dependency
+
+```xml
+<dependency>
+  <groupId>io.opentelemetry.instrumentation</groupId>
+  <artifactId>opentelemetry-spring-boot-starter</artifactId>
+  <version>2.x.x</version>  <!-- matches your OTel SDK version -->
+</dependency>
+```
+
+### Configure via properties
+
+```yaml
+# application.yml
+otel:
+  service:
+    name: order-service
+  exporter:
+    otlp:
+      protocol: grpc
+      endpoint: http://tempo:4317
+  traces:
+    sampler: parentbased_traceidratio
+    sampler.arg: "0.1"
+  metrics:
+    enabled: true
+  logs:
+    enabled: true
+```
+
+Auto-configuration picks this up — no `@Configuration` class needed.
+
+### Annotate methods with `@Observed` (Spring 6+)
+
+Spring 6 ships an observation API. The OTel starter bridges it to OpenTelemetry spans, so any `@Observed`-annotated method gets traced automatically — no manual `Tracer` injection, no `try/finally`.
+
+```java
+import io.micrometer.observation.annotation.Observed;
+
+@Service
+public class OrderService {
+
+  @Observed(name = "order.create", contextualName = "createOrder")
+  public Order createOrder(OrderRequest req) {
+    // business logic — span is created/destroyed by the observation framework
+    return saveOrder(req);
+  }
+}
+```
+
+Enable `@Observed` by adding `@EnableAspectJAutoProxy` + a `ObservedAspect` bean (Spring Boot doesn't auto-register it):
+
+```java
+@Configuration
+public class ObservedConfig {
+
+  @Bean
+  ObservedAspect observedAspect(ObservationRegistry registry) {
+    return new ObservedAspect(registry);
+  }
+}
+```
+
+### Manual `ObservationRegistry` (when `@Observed` isn't enough)
+
+```java
+@Service
+public class PaymentService {
+  private final ObservationRegistry registry;
+
+  public PaymentService(ObservationRegistry registry) {
+    this.registry = registry;
+  }
+
+  public void charge(Order order) {
+    Observation.createNotStarted("payment.charge", registry)
+        .lowCardinalityKeyValue("payment.method", order.method().name())
+        .observe(() -> gateway.charge(order));
+  }
+}
+```
+
+### When to use the starter vs. manual SDK
+
+| Situation | Use |
+|-----------|-----|
+| Spring Boot 3.x service, want tracing on HTTP/JDBC/REST templates automatically | **Starter** |
+| Need `@Observed` annotations on business methods | **Starter** |
+| Non-Spring Java app (Micronaut, Quarkus, plain Javalin) | Manual `SdkTracerProvider` (Java pattern above) |
+| Need fine-grained control over exporter batching, span limits, custom processors | Manual SDK or starter + customizers |
+| TypeScript / Node.js | `NodeSDK` (TypeScript pattern above) |
+
 ## Creating Spans
 
 ### Java Pattern
