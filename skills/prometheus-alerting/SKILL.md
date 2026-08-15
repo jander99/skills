@@ -186,6 +186,92 @@ promtool check rules /path/to/rules.yml
 promtool test rules /path/to/tests.yml
 ```
 
+### Unit Testing Rules with `promtool test rules`
+
+`promtool test rules` runs alert and recording rules against synthetic time
+series so you can verify expressions fire (or stay silent) without standing
+up a live Prometheus. Save tests as a `.yml` or `.yaml` file and run:
+
+```bash
+promtool test rules /path/to/alert_tests.yml
+```
+
+**Test file structure:**
+
+```yaml
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Alert SHOULD fire when error rate exceeds threshold
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="api",status="500"}'
+        values: '0+10x10'    # 10 errors/min for 10 minutes
+      - series: 'http_requests_total{job="api",status="200"}'
+        values: '0+100x10'   # 100 ok/min for 10 minutes
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: api
+            exp_annotations:
+              summary: "High error rate on api"
+              description: "Error rate: 9.09%"
+  # Alert should NOT fire when error rate is low
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="api",status="500"}'
+        values: '0+1x10'
+      - series: 'http_requests_total{job="api",status="200"}'
+        values: '0+100x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighErrorRate
+        exp_alerts: []      # No alerts expected
+```
+
+**Series value shorthands:** `0+10x10` means start at 0 and add 10 each step
+for 10 steps. `1x10` means hold at 1 for 10 steps. `0 5 10 0` is a literal
+sequence. Run `promtool test rules --help` for full syntax.
+
+## Exemplars (Linking Metrics to Traces)
+
+Exemplars attach a trace ID to a specific observation in a histogram or
+counter, letting you jump from a metric spike in Grafana straight to the
+matching trace in Tempo/Jaeger. Requires OpenMetrics exemplars support and
+the scrape target to push exemplars via the OpenTelemetry SDK.
+
+```yaml
+# Storage config (Prometheus side)
+storage:
+  tsdb:
+    exemplars:
+      max-size: 1000000
+```
+
+```java
+// OTel SDK — attach exemplar on histogram observation
+Histogram httpRequestDuration = meter
+    .histogramBuilder("http_request_duration_seconds")
+    .build();
+httpRequestDuration.record(
+    duration,
+    Context.current().with(Span.current()));  // span becomes the exemplar
+```
+
+```promql
+# Query exemplars for a metric
+exemplar_query("http_request_duration_seconds_bucket")
+```
+
+> Exemplars are best-effort references; not every sample carries one, and
+> they expire after the retention window.
+
 > See `references/research.md` for detailed examples and advanced patterns.
 
 ## Related Skills
