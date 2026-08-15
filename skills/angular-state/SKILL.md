@@ -177,6 +177,83 @@ const term$ = toObservable(this.searchTerm);
 const results$ = term$.pipe(debounceTime(300), switchMap(t => this.search(t)));
 ```
 
+## NgRx (Signal Store + Classic Store)
+
+NgRx is the canonical Redux-pattern state library for Angular. Modern NgRx (17+) ships a **Signal Store** that integrates with Angular signals — no RxJS required for component reads.
+
+### Classic Store (Feature Modules)
+
+Best for: large apps, cross-feature interactions, time-travel debugging, strict unidirectional data flow.
+
+```typescript
+// counter.actions.ts
+import { createAction, props } from '@ngrx/store';
+export const increment = createAction('[Counter] Increment');
+export const set = createAction('[Counter] Set', props<{ value: number }>());
+
+// counter.reducer.ts
+import { createReducer, on } from '@ngrx/store';
+export const counterReducer = createReducer(
+  0,
+  on(increment, (state) => state + 1),
+  on(set, (_state, { value }) => value),
+);
+
+// counter.selectors.ts
+import { createFeature, createSelector } from '@ngrx/store';
+export const counterFeature = createFeature({ reducer: counterReducer });
+
+// Component
+@Component({...})
+export class CounterComponent {
+  private store = inject(Store);
+  count = this.store.selectSignal(counterFeature.select.count);  // signal!
+  inc() { this.store.dispatch(increment()); }
+}
+```
+
+### Signal Store (NgRx 17+)
+
+Best for: feature-scoped state, lighter boilerplate than the classic store, signal-native reads.
+
+```typescript
+import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+
+type CartState = { items: CartItem[] };
+const initialState: CartState = { items: [] };
+
+export const CartStore = signalStore(
+  { providedIn: 'root' },
+  withState(initialState),
+  withComputed(({ items }) => ({
+    total: computed(() => items().reduce((s, i) => s + i.price, 0)),
+    count: computed(() => items().length),
+  })),
+  withMethods((store) => ({
+    add(item: CartItem) { patchState(store, (s) => ({ items: [...s.items, item] })); },
+    remove(id: string) { patchState(store, (s) => ({ items: s.items.filter(i => i.id !== id) })); },
+  })),
+);
+
+// Component
+@Component({...})
+export class CartComponent {
+  cart = inject(CartStore);
+  // cart.items(), cart.total(), cart.count() are all signals
+}
+```
+
+### Choosing between the three
+
+| Approach | When to pick |
+|----------|--------------|
+| `BehaviorSubject` service | Small app, single feature, no time-travel/devtools need |
+| Signals (custom service) | Modern default for new features; no boilerplate |
+| NgRx Signal Store | Multiple related entities, derived state, feature-scoped, no cross-feature coordination |
+| NgRx Classic Store (`@ngrx/store`) | Large app, strict unidirectional flow, effects, time-travel, cross-feature coordination, established team patterns |
+
+For new Angular v21+ projects, start with the signal service pattern (see "Signal-Based State" above) and reach for NgRx only when you outgrow it — usually when 3+ components need to read/write the same state, or when you need `@ngrx/effects` for side effects.
+
 ## Common Errors
 
 | Error | Cause | Fix |
