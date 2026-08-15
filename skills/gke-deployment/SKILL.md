@@ -229,6 +229,61 @@ spec:
   type: ClusterIP  # Not NodePort
 ```
 
+## Gateway API vs Ingress (Modern Routing)
+
+[GKE Gateway API](https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api)
+is the modern, role-oriented replacement for Ingress. For **new clusters,
+prefer Gateway API**. Ingress is still fully supported but is on a slower
+trajectory and won't get new features (e.g., GAMMA, mesh integration).
+
+| Aspect | Ingress (legacy) | Gateway API |
+|--------|------------------|-------------|
+| Spec | `networking.k8s.io/v1` | `gateway.networking.k8s.io/v1` (GAMMA: `v1beta1`) |
+| Resource model | Single Ingress, mixed roles | `GatewayClass` → `Gateway` → `HTTPRoute` (role-split) |
+| Multi-tenant | Annotation-heavy | Built-in (separate `Gateway` per tenant/team) |
+| Protocol support | HTTP/HTTPS | HTTP, HTTPS, TCP, UDP, gRPC, TLS |
+| GKE-managed TLS | `ManagedCertificate` + annotation | `frontend.tlsCertificate` or `GCPSecretManager` reference |
+| Migration | — | `Ingress` and `Gateway` can coexist; annotate Ingress with `kubernetes.io/ingress.class=gce` |
+
+**Minimal Gateway example** (GKE-managed, HTTPS via `FrontendTLSPolicy`):
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-app-gateway
+  namespace: default
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        options:
+          networking.gke.io/pre-shared-certs: my-cert   # ManagedCertificate
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app
+spec:
+  parentRefs:
+    - name: my-app-gateway
+  hostnames: ["api.example.com"]
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: my-app
+          port: 80
+```
+
+**When to keep Ingress:** existing production clusters with `ManagedCertificate`
+already wired up, or when you need the `kubernetes.io/ingress.class=gce` class
+behavior for compatibility. Otherwise, default to Gateway API for new work.
+
 > See `references/research.md` for detailed examples and advanced patterns.
 
 ## Related Skills
