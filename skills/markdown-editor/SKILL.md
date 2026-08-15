@@ -84,6 +84,62 @@ tags: [tag1, tag2]
 | Filename collision | Generic name already exists | Use more specific descriptive name |
 | Invalid timestamp | Wrong date format | Use ISO 8601 with UTC: `2025-12-25T14:30:00Z` |
 
+## Diagrams and Callouts
+
+Modern docs often include inline diagrams and callouts. Use these Markdown extensions where the renderer supports them.
+
+### Mermaid Diagrams
+
+GitHub, GitLab, and most static-site generators render ```` ```mermaid ```` fenced blocks into diagrams.
+
+**Flowchart:**
+
+````markdown
+```mermaid
+flowchart LR
+    A[User] --> B[API Gateway]
+    B --> C[Service A]
+    B --> D[Service B]
+```
+````
+
+**Sequence diagram:**
+
+````markdown
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as API
+    U->>A: POST /orders
+    A-->>U: 201 Created
+```
+````
+
+> Keep diagrams small. If a diagram needs more than ~15 nodes, split it or use the referenced `examples.md` for larger compositions.
+
+### Admonitions (GitHub-Flavored)
+
+GitHub renders blockquote-prefixed callouts as colored admonitions:
+
+```markdown
+> [!NOTE]
+> Highlights information that users should take into account.
+
+> [!TIP]
+> Optional advice to help users be more successful.
+
+> [!IMPORTANT]
+> Crucial information necessary for success.
+
+> [!WARNING]
+> Critical content demanding immediate attention.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes.
+```
+
+Other renderers (MkDocs `admonition`, Docusaurus, Hugo shortcodes) use different syntax — only emit `> [!TYPE]` when you know the renderer is GitHub or a GitHub-compatible adapter.
+
 ## References
 
 | Reference | Load When |
