@@ -196,6 +196,91 @@ context7 query "@WebMvcTest MockMvc" --library spring-boot
 context7 query "PostgreSQLContainer" --library testcontainers
 ```
 
+## @ParameterizedTest - Data-Driven Tests
+
+When the same assertion should run with many inputs (validation rules,
+discount calculations, edge cases), `@ParameterizedTest` replaces a pile
+of near-duplicate methods with one parameterized method. Requires
+`junit-jupiter-params` (transitively included with `spring-boot-starter-test`).
+
+```java
+@ParameterizedTest(name = "[{index}] amount={0} → expected={1}")
+@MethodSource("validAmounts")
+void shouldApplyDiscount(double amount, double expected) {
+    assertThat(pricing.applyDiscount(amount)).isEqualTo(expected);
+}
+
+static Stream<Arguments> validAmounts() {
+    return Stream.of(
+        Arguments.of(100.0, 90.0),
+        Arguments.of(50.0, 50.0),     // below threshold
+        Arguments.of(0.0, 0.0));
+}
+```
+
+**Common sources:**
+
+```java
+@ParameterizedTest
+@ValueSource(strings = {"", " ", "\t"})              // simple values
+void shouldRejectBlank(String input) { ... }
+
+@ParameterizedTest
+@CsvSource({                                     // inline CSV
+    "1, USD, 10.00",
+    "2, EUR, 20.00"
+})
+void shouldParseOrder(long id, String currency, String amount) { ... }
+
+@ParameterizedTest
+@EnumSource(OrderStatus.class)                    // all enum constants
+void shouldHandleAllStatuses(OrderStatus status) { ... }
+```
+
+For argument-type conversion beyond primitives, register a
+`org.junit.jupiter.params.converter.ArgumentConverter`. See the
+[JUnit 5 user guide](https://junit.org/junit5/docs/current/user-guide/#writing-tests-parameterized-tests)
+for the full set of source annotations.
+
+## @RestClientTest - HTTP Client Slice
+
+When you call another service via `RestClient` (Spring 6.1+) or
+`RestTemplate`, use `@RestClientTest` to load only the HTTP-client slice
+plus Jackson. Mock the remote server with `MockRestServiceServer`.
+
+```java
+@RestClientTest(PaymentClient.class)
+class PaymentClientTest {
+
+    @Autowired
+    private PaymentClient paymentClient;
+
+    @Autowired
+    private MockRestServiceServer server;
+
+    @Test
+    void shouldReturnPaymentStatus() {
+        server.expect(requestTo("https://payments.example.com/charge"))
+              .andRespond(withSuccess("""
+                  {"id":"pay_1","status":"captured"}
+                  """, MediaType.APPLICATION_JSON));
+
+        Payment result = paymentClient.charge(new ChargeRequest(100, "USD"));
+
+        assertThat(result.status()).isEqualTo("captured");
+        server.verify();
+    }
+}
+```
+
+**Notes:**
+- `@RestClientTest` auto-configures the `RestClient.Builder` / `RestTemplateBuilder`
+  the client under test depends on. Other beans are not loaded.
+- If the client uses a different base URL, configure it via `@RestClientTest`
+  properties (`@RestClientTest(properties = "payments.base-url=https://...")`).
+- For `WebClient` (reactive HTTP), use the equivalent reactive test helpers
+  in the `spring-reactive` skill — `@RestClientTest` does not cover them.
+
 ## Common Errors
 
 | Error | Cause | Solution |
